@@ -37,8 +37,15 @@ function render(provider: Provider, activity: SessionActivity): void {
   const icon = activity === "busy" ? "$(sync~spin)" : "$(arrow-swap)"
   const usage = currentUsage()
   const active = provider === "glm" ? usage.glm : usage.anthropic
-  const pct = active?.fiveHour ? `${Math.round(active.fiveHour.pct)}%` : ""
-  statusItem.text = pct ? `${icon} ${label} ${pct}` : `${icon} ${label}`
+  const fiveHourPct = (u: ProviderUsage | null): string | null =>
+    u?.fiveHour ? `${Math.round(u.fiveHour.pct)}%` : null
+  const aPct = fiveHourPct(usage.anthropic)
+  const gPct = fiveHourPct(usage.glm)
+  statusItem.text = [
+    `${icon} ${label}`,
+    ...(aPct ? [`C ${aPct}`] : []),
+    ...(gPct ? [`G ${gPct}`] : []),
+  ].join(" · ")
   statusItem.tooltip = new vscode.MarkdownString(
     [
       `**CC-GG-bridgy** — next Claude Code session runs on **${label}**`,

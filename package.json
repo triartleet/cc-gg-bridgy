@@ -3,7 +3,7 @@
   "displayName": "CC-GG-bridgy",
   "description": "Provider switch for the Claude Code extension: Anthropic ⇄ z.ai GLM, per project, busy-gated",
   "version": "0.1.0",
-  "publisher": "triartleet",
+  "publisher": "alkisyuv",
   "license": "MIT",
   "repository": {
     "type": "git",

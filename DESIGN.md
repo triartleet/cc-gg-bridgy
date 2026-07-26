@@ -70,6 +70,19 @@ Components:
   status-bar item, toggle command, toast flow.
 - `src/state.ts` — `state.json` read/write (`{projects: {path: provider},
   default: "anthropic"}`).
+- `src/usage.ts` — dual-provider quota readout (both official read-only
+  endpoints, verified live 2026-07-26): Anthropic `GET /api/oauth/usage`
+  (Bearer = Claude Code's own OAuth token, read from
+  `~/.claude/.credentials.json` or the macOS Keychain — used for one GET,
+  never stored) → `five_hour`/`seven_day` utilization + resets; z.ai
+  `GET <origin>/api/monitor/usage/quota/limit` (bare-key Authorization,
+  origin derived from glm.env's base URL) → `TOKENS_LIMIT` rows: hour-unit
+  (3) = the 5h cycle, week-unit (6) = weekly, `TIME_LIMIT` = monthly MCP
+  (not rendered). Fail-open everywhere — errors keep the last snapshot,
+  missing creds render "—", 429 backs off 15 min. Poll: 5 min + on toggle.
+  Status item shows the ACTIVE provider's 5h % inline; the tooltip shows
+  both providers; the warning tint now means "active 5h window ≥ 80%"
+  (provider identity is text-only — the tint carries one signal).
 - `src/busy.ts` — activity classification. Project slug = workspace path with
   every non-alphanumeric → `-` (verified against `~/.claude/projects/`
   entries). The active transcript comes from the live-session registry (cwd
@@ -209,7 +222,7 @@ Components:
 - Auto-resume: open an integrated terminal running
   `claude --resume <newest-session-id>` under the target env when the user
   prefers terminal UI.
-- Quota awareness: surface the GLM 5-hour window (Z.ai usage tracker exists as
-  a separate extension; bridgy could inline the number next to the toggle).
 - Per-session provider badges in the status tooltip (which recent sessions ran
   on which provider, from transcript `model` fields).
+- (Quota awareness shipped 2026-07-26 as `src/usage.ts` — both providers in
+  the status tooltip, active 5h % inline.)

@@ -33,6 +33,12 @@ and walks you through resuming the conversation on the other side.
   store; the CLI's own `--resume <session-id>` is the transfer mechanism.
   After a toggle, bridgy offers **New conversation** (spawns a fresh process
   under the new provider) and points you at the session list to resume.
+- **Usage in one place** — the status item shows the active provider's
+  5-hour usage inline; its tooltip shows both providers' official quota
+  (Anthropic 5h/7d via the OAuth usage endpoint, read-only with Claude
+  Code's own token; z.ai 5h/weekly via the Coding Plan quota endpoint).
+  The warning tint fires when the active 5h window passes 80%. All of it
+  fails open — no creds or no network just shows "—".
 
 ## Status
 

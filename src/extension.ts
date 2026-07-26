@@ -3,11 +3,15 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { classify, SessionActivity } from "./busy"
 import { Provider, providerFor, setProvider, stateDir } from "./state"
+import { currentUsage, formatReset, ProviderUsage, refreshUsage } from "./usage"
 
 const POLL_MS = 2000
+const USAGE_POLL_MS = 5 * 60 * 1000
+const USAGE_WARN_PCT = 80
 
 let statusItem: vscode.StatusBarItem
 let pollTimer: ReturnType<typeof setInterval> | undefined
+let usageTimer: ReturnType<typeof setInterval> | undefined
 
 function workspacePath(): string | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
@@ -17,13 +21,30 @@ function quietWindowMs(): number {
   return vscode.workspace.getConfiguration("ccGgBridgy").get<number>("quietWindowMs", 2500)
 }
 
+function usageLine(name: string, u: ProviderUsage | null, weeklyLabel: string): string {
+  if (!u || (!u.fiveHour && !u.weekly)) return `**${name}** — usage unavailable`
+  const part = (label: string, w: { pct: number; resetMs: number | null } | null): string =>
+    w ? `${label} ${Math.round(w.pct)}%${w.resetMs ? ` (↻ ${formatReset(w.resetMs)})` : ""}` : ""
+  const tier = u.note ? ` _(${u.note})_` : ""
+  return [`**${name}**${tier}`, part("5h", u.fiveHour), part(weeklyLabel, u.weekly)]
+    .filter(Boolean)
+    .join(" · ")
+}
+
 function render(provider: Provider, activity: SessionActivity): void {
   const label = provider === "glm" ? "GLM" : "Claude"
   const icon = activity === "busy" ? "$(sync~spin)" : "$(arrow-swap)"
-  statusItem.text = `${icon} ${label}`
+  const usage = currentUsage()
+  const active = provider === "glm" ? usage.glm : usage.anthropic
+  const pct = active?.fiveHour ? `${Math.round(active.fiveHour.pct)}%` : ""
+  statusItem.text = pct ? `${icon} ${label} ${pct}` : `${icon} ${label}`
   statusItem.tooltip = new vscode.MarkdownString(
     [
       `**CC-GG-bridgy** — next Claude Code session runs on **${label}**`,
+      "",
+      usageLine("Claude", usage.anthropic, "7d"),
+      "",
+      usageLine("GLM", usage.glm, "wk"),
       "",
       activity === "busy"
         ? "Session activity detected — switching is gated until the answer lands."
@@ -32,8 +53,12 @@ function render(provider: Provider, activity: SessionActivity): void {
           : "Session idle — safe to switch.",
     ].join("\n"),
   )
+  // The warning tint means "active provider's 5h window is nearly spent" —
+  // provider identity stays text-only so the color can carry that one signal.
   statusItem.backgroundColor =
-    provider === "glm" ? new vscode.ThemeColor("statusBarItem.warningBackground") : undefined
+    active?.fiveHour && active.fiveHour.pct >= USAGE_WARN_PCT
+      ? new vscode.ThemeColor("statusBarItem.warningBackground")
+      : undefined
   statusItem.show()
 }
 
@@ -63,6 +88,7 @@ async function toggle(): Promise<void> {
   }
   const next: Provider = providerFor(ws) === "glm" ? "anthropic" : "glm"
   setProvider(ws, next)
+  void refreshUsage().then(refresh)
   refresh()
   const label = next === "glm" ? "GLM (z.ai)" : "Claude (Anthropic)"
   const picked = await vscode.window.showInformationMessage(
@@ -120,8 +146,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("cc-gg-bridgy.setupWrapper", () => setupWrapper(context)),
   )
   pollTimer = setInterval(refresh, POLL_MS)
-  context.subscriptions.push({ dispose: () => pollTimer && clearInterval(pollTimer) })
+  usageTimer = setInterval(() => void refreshUsage().then(refresh), USAGE_POLL_MS)
+  context.subscriptions.push({
+    dispose: () => {
+      if (pollTimer) clearInterval(pollTimer)
+      if (usageTimer) clearInterval(usageTimer)
+    },
+  })
   refresh()
+  void refreshUsage().then(refresh)
 
   const current = vscode.workspace
     .getConfiguration("claudeCode")
@@ -152,4 +185,5 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   if (pollTimer) clearInterval(pollTimer)
+  if (usageTimer) clearInterval(usageTimer)
 }

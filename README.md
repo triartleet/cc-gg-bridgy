@@ -1,7 +1,7 @@
 # CC-GG-bridgy
 
 <div align="center">
-  <img src="media/logo.png" width="220" alt="CC-GG-bridgy — a bee with a stinger, ready to switch providers">
+  <img src="media/bridgy-logo.png" width="220" alt="CC-GG-bridgy — a bee with a stinger, ready to switch providers">
 </div>
 
 A tiny Cursor/VS Code companion extension that adds the one thing the official

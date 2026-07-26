@@ -36,10 +36,11 @@ and walks you through resuming the conversation on the other side.
 
 ## Status
 
-Pre-alpha scaffold. The four design decisions are locked (see
-[DESIGN.md](DESIGN.md)); spikes S1–S4 must pass in a live Cursor before this
-is trustworthy. Nothing here proxies traffic or touches auth flows — each
-provider serves its own subscription through its own supported endpoint.
+Alpha. The four design decisions are locked and spikes S1–S5 passed live in
+a Cursor Extension Development Host on 2026-07-26 (see
+[DESIGN.md](DESIGN.md) — Spike results). Nothing here proxies traffic or
+touches auth flows — each provider serves its own subscription through its
+own supported endpoint.
 
 ## Dev loop
 
@@ -50,5 +51,7 @@ pnpm build          # esbuild bundle → dist/extension.js
 ```
 
 First activation offers to configure the wrapper setting; decline it to run
-inert. `CC_GG_BRIDGY_DEBUG=1` makes the shim log its argv/cwd/env decision to
-`~/.config/cc-gg-bridgy/debug.log` (spike S1/S3 evidence).
+inert. `CC_GG_BRIDGY_DEBUG=1` — or, since the extension's spawn env is hard to
+reach, `touch ~/.config/cc-gg-bridgy/debug-on` — makes the shim log its
+argv/cwd/env decision to `~/.config/cc-gg-bridgy/debug.log` (spike S1/S3
+evidence). An explicit env value overrides the flag file.

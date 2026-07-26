@@ -137,26 +137,41 @@ Components:
   hot-switches Claude Code provider config by rewriting config files, but
   globally and outside the IDE.
 
-## Spikes (must pass in a live Extension Development Host before trust)
+## Spike results (validated live 2026-07-26, EDH + ext 2.1.220)
 
-- **S1 — wrapper argv contract.** What argv does the wrapper actually receive
-  when the bundled native binary is in play (empty executableArgs suspected)?
-  Debug-log proves it; adjust exec branch if needed.
-- **S2 — process lifecycle.** Does each new conversation spawn a fresh CLI
-  process (wrapper re-runs, env re-evaluated), or is one process long-lived
-  per window (toggle then needs window reload)? Determines whether the
-  [New conversation] path suffices.
-- **S3 — wrapper cwd.** Confirm the spawned process cwd is the workspace
-  folder (per-project state resolution depends on it); else derive the
-  project from an env var the extension sets, or fall back to global state.
-- **S4 — GLM auth via wrapper env.** Confirm the extension's session honors
-  injected `ANTHROPIC_AUTH_TOKEN`/`ANTHROPIC_BASE_URL` without triggering the
-  extension's login prompt (`claudeCode.disableLoginPrompt` is the documented
-  escape hatch if it does).
-- **S5 — live-session registry semantics.** `~/.claude/sessions/<pid>.json`
-  is verified present on macOS and busy.ts already keys on it; confirm the
-  registry entry is removed/goes stale correctly on crash and window close,
-  and whether `peerProtocol` offers a richer status channel worth adopting.
+- **S1 — wrapper argv contract: PASS (suspected shape falsified).** The
+  extension invokes the wrapper with the REAL CLI as argv[1] — the bundled
+  native-binary path, not the suspected empty-executableArgs bare-flags shape
+  — followed by the full flag list (`--output-format stream-json --verbose
+  --input-format stream-json --permission-prompt-tool stdio …`). The
+  executable-passthrough branch is the live one; node/`*.js` and `find_cli`
+  stay as defense. The wrapper also routes `auth status --json` probes and a
+  `--thinking disabled` warm-up session — about three invocations per panel
+  open, all in debug.log.
+- **S2 — process lifecycle: PASS.** Each conversation is its own CLI process:
+  after a toggle, a NEW conversation spawned a fresh pid through the wrapper
+  (provider=glm, env injected) with no window reload. Messages and `/model`
+  inside an existing conversation reuse its process, so an open conversation
+  keeps the provider it started on — the [New conversation] handoff path is
+  exactly right.
+- **S3 — wrapper cwd: PASS.** Every logged spawn (Anthropic and GLM legs) had
+  cwd == the window's workspace folder; per-project resolution via `pwd -P`
+  works as designed.
+- **S4 — GLM auth via wrapper env: PASS.** Injected `ANTHROPIC_BASE_URL` /
+  `ANTHROPIC_AUTH_TOKEN` were honored with NO login prompt
+  (`disableLoginPrompt` not needed). Transcript evidence: haiku-slot reply
+  served by `glm-4.7`; after `/model glm-5.2[1m]`, served by `glm-5.2`. The
+  native binary knows all slot vars incl. `ANTHROPIC_DEFAULT_FABLE_MODEL`
+  (symbol-checked). Caveat: a fresh GLM conversation may open on the
+  small/haiku slot — check `/model` after a toggle; bridgy never touches
+  model choice (decision 4).
+- **S5 — live-session registry semantics: PASS.** Clean exits remove
+  `~/.claude/sessions/<pid>.json` — observed on both a session's own exit
+  and window close. SIGKILL leaves a stale entry that nothing reaps, not
+  even a sibling's later clean shutdown (observed via `kill -9`), so
+  busy.ts's `pidAlive()` guard is load-bearing. `peerProtocol` is a bare
+  version int (`1`) — no richer status channel to adopt; the transcript-tail
+  heuristic stays.
 
 ## Risks
 
@@ -172,9 +187,11 @@ Components:
   read as busy (safe direction); a dead session with an open-looking tail
   reads busy until the 30-min staleness escape flips it. Acceptable v1
   trade — the forced-switch confirm exists.
-- **Model-name cosmetics.** Under GLM the extension UI still renders Claude
-  model names in places (the env only remaps the wire model). Cosmetic only —
-  the status bar is the truth surface.
+- **Model slot surprises under GLM.** The `/model` list reflects the mapped
+  GLM names (verified live — better than the "UI still shows Claude names"
+  fear), but a fresh conversation may open on the small/haiku slot rather
+  than the flagship mapping. The status bar stays the provider truth surface;
+  model choice stays the user's.
 
 ## Non-goals
 

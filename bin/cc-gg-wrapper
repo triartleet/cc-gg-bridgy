@@ -1,9 +1,10 @@
 #!/bin/sh
 # CC-GG-bridgy shim for claudeCode.claudeProcessWrapper.
-# Contract (spike S1): the Claude extension launches THIS executable in place
-# of the CLI; argv may already carry the real executable (node + cli.js) or be
-# the bare CLI args when the bundled native binary is in play. Fail OPEN: on
-# any doubt, exec the real CLI untouched so Claude Code keeps working.
+# Contract (verified, ext 2.1.220): the Claude extension launches THIS
+# executable with the real CLI as argv[1] — the bundled native-binary path,
+# or [node, cli.js] when that fallback is in play — followed by the CLI
+# flags. Fail OPEN: on any doubt, exec the real CLI untouched so Claude Code
+# keeps working.
 
 set -u
 
@@ -11,6 +12,11 @@ CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"
 STATE_FILE="${CONFIG_DIR}/state.json"
 GLM_ENV_FILE="${CC_GG_BRIDGY_GLM_ENV:-${CONFIG_DIR}/glm.env}"
 DEBUG_LOG="${CONFIG_DIR}/debug.log"
+# The extension's spawn env is not injectable from outside, so a flag FILE
+# also enables debug; an explicit env value (even 0) still wins.
+if [ -z "${CC_GG_BRIDGY_DEBUG:-}" ] && [ -f "${CONFIG_DIR}/debug-on" ]; then
+  CC_GG_BRIDGY_DEBUG=1
+fi
 # Extension stores realpath'd project keys; compare against the physical cwd.
 PWD_REAL="$(pwd -P)"
 
@@ -47,7 +53,7 @@ load_glm_env() {
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
     '' | \#*) continue ;;
-    [A-Za-z_]*=*) export "$line" ;;
+    [A-Za-z_]*=*) export "${line?}" ;;
     *) debug "glm.env: skipped malformed line" ;;
     esac
   done <"$GLM_ENV_FILE"

@@ -70,19 +70,25 @@ Components:
   status-bar item, toggle command, toast flow.
 - `src/state.ts` — `state.json` read/write (`{projects: {path: provider},
   default: "anthropic"}`).
-- `src/usage.ts` — dual-provider quota readout (both official read-only
-  endpoints, verified live 2026-07-26): Anthropic `GET /api/oauth/usage`
-  (Bearer = Claude Code's own OAuth token, read from
-  `~/.claude/.credentials.json` or the macOS Keychain — used for one GET,
-  never stored) → `five_hour`/`seven_day` utilization + resets; z.ai
+- `src/usage.ts` — dual-provider quota readout (verified live 2026-07-26).
+  **Anthropic**: read from the statusline tee
+  (`~/.config/cc-gg-bridgy/statusline-last.json`, written by a fail-safe
+  block in `~/.claude/statusline-command.sh` — snippet in README) →
+  `rate_limits.five_hour/seven_day` `used_percentage` + `resets_at` (unix
+  SECONDS). Chosen over the community OAuth usage endpoint after that path
+  401'd live: the Keychain access-token copy rots on this machine, and
+  refreshing it ourselves would touch auth flows (non-goal). Limitation:
+  only TERMINAL sessions run statusline scripts (the extension UI does
+  not, verified), and `rate_limits` appears only after a real turn — the
+  tooltip shows an "as of" note past 30 min. **z.ai**:
   `GET <origin>/api/monitor/usage/quota/limit` (bare-key Authorization,
   origin derived from glm.env's base URL) → `TOKENS_LIMIT` rows: hour-unit
   (3) = the 5h cycle, week-unit (6) = weekly, `TIME_LIMIT` = monthly MCP
-  (not rendered). Fail-open everywhere — errors keep the last snapshot,
-  missing creds render "—", 429 backs off 15 min. Poll: 5 min + on toggle.
-  Status item shows the ACTIVE provider's 5h % inline; the tooltip shows
-  both providers; the warning tint now means "active 5h window ≥ 80%"
-  (provider identity is text-only — the tint carries one signal).
+  (not rendered). Fail-open everywhere — errors keep the last snapshot and
+  carry the reason into the tooltip, 429 backs off 15 min. Poll: 5 min +
+  on toggle. Status item shows the ACTIVE provider's 5h % inline; the
+  tooltip shows both providers; the warning tint means "active 5h window
+  ≥ 80%" (provider identity is text-only — the tint carries one signal).
 - `src/busy.ts` — activity classification. Project slug = workspace path with
   every non-alphanumeric → `-` (verified against `~/.claude/projects/`
   entries). The active transcript comes from the live-session registry (cwd

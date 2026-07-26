@@ -22,7 +22,8 @@ function quietWindowMs(): number {
 }
 
 function usageLine(name: string, u: ProviderUsage | null, weeklyLabel: string): string {
-  if (!u || (!u.fiveHour && !u.weekly)) return `**${name}** — usage unavailable`
+  if (!u || (!u.fiveHour && !u.weekly))
+    return `**${name}** — usage unavailable${u?.error ? ` (${u.error})` : ""}`
   const part = (label: string, w: { pct: number; resetMs: number | null } | null): string =>
     w ? `${label} ${Math.round(w.pct)}%${w.resetMs ? ` (↻ ${formatReset(w.resetMs)})` : ""}` : ""
   const tier = u.note ? ` _(${u.note})_` : ""

@@ -1,7 +1,6 @@
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { execFile } from "node:child_process"
 
 // Both providers expose official read-only usage endpoints; bridgy renders
 // them side by side and NEVER blocks on them — any failure shows "—".
@@ -14,6 +13,7 @@ export interface ProviderUsage {
   fiveHour: WindowUsage | null
   weekly: WindowUsage | null
   note?: string
+  error?: string
 }
 
 export interface UsageSnapshot {
@@ -23,11 +23,12 @@ export interface UsageSnapshot {
 }
 
 const FETCH_TIMEOUT_MS = 10_000
-// The Anthropic endpoint is known to 429 persistently at times — back off
-// rather than hammering it on the poll cadence.
 const BACKOFF_MS = 15 * 60 * 1000
+// The statusline feed only updates while a terminal session turns over —
+// beyond this age the numbers get an "as of" note instead of reading current.
+const FEED_FRESH_MS = 30 * 60 * 1000
 
-const nextAllowed: Record<"anthropic" | "glm", number> = { anthropic: 0, glm: 0 }
+const nextAllowed: Record<"glm", number> = { glm: 0 }
 let snapshot: UsageSnapshot = { anthropic: null, glm: null, fetchedAt: 0 }
 
 export function currentUsage(): UsageSnapshot {
@@ -42,54 +43,46 @@ function readFileMaybe(p: string): string | null {
   }
 }
 
-// Claude Code keeps its OAuth blob in ~/.claude/.credentials.json, or in the
-// macOS Keychain under "Claude Code-credentials" (same JSON). Read-only; the
-// token is used for one GET and never stored.
-async function anthropicAccessToken(): Promise<string | null> {
-  const raw = readFileMaybe(path.join(os.homedir(), ".claude", ".credentials.json"))
-  const fromJson = (s: string): string | null => {
-    try {
-      return JSON.parse(s)?.claudeAiOauth?.accessToken ?? null
-    } catch {
-      return null
-    }
-  }
-  if (raw) {
-    const t = fromJson(raw)
-    if (t) return t
-  }
-  if (process.platform !== "darwin") return null
-  return new Promise((resolve) => {
-    execFile(
-      "security",
-      ["find-generic-password", "-s", "Claude Code-credentials", "-w"],
-      { timeout: FETCH_TIMEOUT_MS },
-      (err, stdout) => resolve(err ? null : fromJson(stdout.trim())),
-    )
-  })
-}
+const unavailable = (error: string): ProviderUsage => ({ fiveHour: null, weekly: null, error })
 
-async function fetchAnthropicUsage(): Promise<ProviderUsage | null> {
-  const token = await anthropicAccessToken()
-  if (!token) return null
-  const res = await fetch("https://api.anthropic.com/api/oauth/usage", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "anthropic-beta": "oauth-2025-04-20",
-    },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  })
-  if (res.status === 429) {
-    nextAllowed.anthropic = Date.now() + BACKOFF_MS
-    return null
+// The Anthropic numbers come from Claude Code's OWN statusline payload
+// (rate_limits, present once a session has made a real turn), teed to a file
+// by ~/.claude/statusline-command.sh. Chosen over the community OAuth usage
+// endpoint because the Keychain access-token copy rots on this machine
+// (verified 401, token expired) and refreshing it ourselves would touch auth
+// flows — a locked non-goal. Trade-off: only TERMINAL sessions run the
+// statusline script, so the feed's freshness rides on terminal use.
+function fetchAnthropicUsage(): ProviderUsage {
+  const file = path.join(os.homedir(), ".config", "cc-gg-bridgy", "statusline-last.json")
+  const raw = readFileMaybe(file)
+  if (!raw) return unavailable("no statusline feed yet — run a terminal claude turn")
+  let mtimeMs = 0
+  try {
+    mtimeMs = fs.statSync(file).mtimeMs
+  } catch {
+    /* keep 0 */
   }
-  if (!res.ok) return null
-  const body: any = await res.json()
+  let rl: any
+  try {
+    rl = JSON.parse(raw)?.rate_limits
+  } catch {
+    return unavailable("statusline feed unparseable")
+  }
+  // resets_at is unix SECONDS in this payload, unlike the OAuth endpoint.
   const win = (w: any): WindowUsage | null =>
-    typeof w?.utilization === "number"
-      ? { pct: w.utilization, resetMs: w.resets_at ? Date.parse(w.resets_at) : null }
+    typeof w?.used_percentage === "number"
+      ? { pct: w.used_percentage, resetMs: w.resets_at ? w.resets_at * 1000 : null }
       : null
-  return { fiveHour: win(body.five_hour), weekly: win(body.seven_day) }
+  const fiveHour = win(rl?.five_hour)
+  const weekly = win(rl?.seven_day)
+  if (!fiveHour && !weekly)
+    return unavailable("statusline feed has no rate_limits yet — run a terminal claude turn")
+  const stale = mtimeMs && Date.now() - mtimeMs > FEED_FRESH_MS
+  return {
+    fiveHour,
+    weekly,
+    note: stale ? `as of ${formatReset(mtimeMs)}` : undefined,
+  }
 }
 
 function parseGlmEnv(): { token: string | null; origin: string } {
@@ -114,18 +107,18 @@ function parseGlmEnv(): { token: string | null; origin: string } {
 // z.ai quota limits: TOKENS_LIMIT rows are the prompt/token windows (hour-unit
 // row = the 5h cycle, the other = weekly); TIME_LIMIT is the monthly MCP-tools
 // allotment, which bridgy doesn't render. Authorization is the bare key.
-async function fetchGlmUsage(): Promise<ProviderUsage | null> {
+async function fetchGlmUsage(): Promise<ProviderUsage> {
   const { token, origin } = parseGlmEnv()
-  if (!token) return null
+  if (!token) return unavailable("no ANTHROPIC_AUTH_TOKEN in glm.env")
   const res = await fetch(`${origin}/api/monitor/usage/quota/limit`, {
     headers: { Authorization: token, "Accept-Language": "en-US,en" },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (res.status === 429) {
     nextAllowed.glm = Date.now() + BACKOFF_MS
-    return null
+    return unavailable("HTTP 429 — rate-limited, backing off 15 min")
   }
-  if (!res.ok) return null
+  if (!res.ok) return unavailable(`HTTP ${res.status}`)
   const body: any = await res.json()
   const limits: any[] = Array.isArray(body?.data?.limits) ? body.data.limits : []
   const tokenWindows = limits
@@ -143,19 +136,30 @@ async function fetchGlmUsage(): Promise<ProviderUsage | null> {
   }
 }
 
-// Refresh both sides concurrently; a failure keeps the previous side's data
-// (stale beats blank mid-session) and never throws into the caller.
+// A fresh error keeps the previous side's numbers (stale beats blank
+// mid-session) but carries the reason so the tooltip can say WHY.
+function merge(prev: ProviderUsage | null, fresh: ProviderUsage): ProviderUsage {
+  if (fresh.fiveHour || fresh.weekly) return fresh
+  return prev ? { ...prev, error: fresh.error } : fresh
+}
+
 export async function refreshUsage(): Promise<UsageSnapshot> {
   const now = Date.now()
-  const [a, g] = await Promise.all([
-    now < nextAllowed.anthropic
-      ? Promise.resolve(snapshot.anthropic)
-      : fetchAnthropicUsage().catch(() => snapshot.anthropic),
+  let a: ProviderUsage
+  try {
+    a = fetchAnthropicUsage()
+  } catch (e: any) {
+    a = unavailable(String(e?.message ?? e))
+  }
+  const g =
     now < nextAllowed.glm
-      ? Promise.resolve(snapshot.glm)
-      : fetchGlmUsage().catch(() => snapshot.glm),
-  ])
-  snapshot = { anthropic: a ?? snapshot.anthropic, glm: g ?? snapshot.glm, fetchedAt: now }
+      ? snapshot.glm
+      : await fetchGlmUsage().catch((e) => unavailable(String(e?.message ?? e)))
+  snapshot = {
+    anthropic: merge(snapshot.anthropic, a),
+    glm: g ? merge(snapshot.glm, g) : snapshot.glm,
+    fetchedAt: now,
+  }
   return snapshot
 }
 

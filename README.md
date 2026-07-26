@@ -34,11 +34,24 @@ and walks you through resuming the conversation on the other side.
   After a toggle, bridgy offers **New conversation** (spawns a fresh process
   under the new provider) and points you at the session list to resume.
 - **Usage in one place** — the status item shows the active provider's
-  5-hour usage inline; its tooltip shows both providers' official quota
-  (Anthropic 5h/7d via the OAuth usage endpoint, read-only with Claude
-  Code's own token; z.ai 5h/weekly via the Coding Plan quota endpoint).
-  The warning tint fires when the active 5h window passes 80%. All of it
-  fails open — no creds or no network just shows "—".
+  5-hour usage inline; its tooltip shows both providers (Claude 5h/7d,
+  GLM 5h/weekly + tier). The warning tint fires when the active 5h window
+  passes 80%. All of it fails open — a missing source shows the reason,
+  never an error. The GLM side queries the Coding Plan quota endpoint with
+  the glm.env key; the Claude side reads Claude Code's own `rate_limits`
+  statusline payload, teed to `~/.config/cc-gg-bridgy/statusline-last.json`
+  by this block in `~/.claude/statusline-command.sh` (only terminal
+  sessions run statusline scripts, so its freshness rides on terminal use):
+
+  ```bash
+  # after: input=$(cat)
+  {
+    bridgy_dir="$HOME/.config/cc-gg-bridgy"
+    mkdir -p "$bridgy_dir" &&
+      printf '%s' "$input" >"$bridgy_dir/statusline-last.json.tmp" &&
+      mv -f "$bridgy_dir/statusline-last.json.tmp" "$bridgy_dir/statusline-last.json"
+  } 2>/dev/null || true
+  ```
 
 ## Status
 

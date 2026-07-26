@@ -2,7 +2,9 @@
 
 Supervisor extension that switches the official Claude Code extension between
 Anthropic and z.ai GLM per project, gated on session idleness, with native
-session handoff. Decisions locked with the owner on 2026-07-26.
+session handoff. This is the engineering record — decisions, evidence, and
+live spike validation (all on macOS, Claude Code extension 2.1.220); the
+[README](README.md) covers installation and use. Decisions locked 2026-07-26.
 
 ## Verdict
 
@@ -144,11 +146,9 @@ Components:
   so transcripts are provider-agnostic.
 - CLI supports `-r/--resume [sessionId]`, `--continue`, `--fork-session`,
   `--session-id <uuid>` (from `claude --help`).
-- The owner's earlier `glm -c` / `claude -c` launcher pair proved the
-  bidirectional CLI-level handoff in practice — but the `glm` launcher is
-  ABSENT from this machine as of 2026-07-26 (`command -v glm` fails; not in
-  `~/.local/bin`), so the working z.ai env values must be re-established in
-  `glm.env` from the Coding Plan dashboard, not copied from it.
+- An earlier CLI-level launcher pair (`glm -c` / `claude -c` shell aliases
+  swapping the same env vars) proved the bidirectional session handoff in
+  practice before this extension existed.
 - Prior art: no GLM UI extension for Cursor exists (ZCode is a standalone
   desktop app; z.ai's Cursor doc configures Cursor's NATIVE model settings
   over the OpenAI protocol, and its Claude-Code path is CLI env vars — which

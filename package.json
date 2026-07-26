@@ -2,10 +2,18 @@
   "name": "cc-gg-bridgy",
   "displayName": "CC-GG-bridgy",
   "description": "Provider switch for the Claude Code extension: Anthropic ⇄ z.ai GLM, per project, busy-gated",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "triartleet",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/triartleet/cc-gg-bridgy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/triartleet/cc-gg-bridgy/issues"
+  },
+  "keywords": ["claude-code", "cursor", "z.ai", "glm", "provider-switch", "anthropic"],
   "engines": {
     "vscode": "^1.94.0"
   },

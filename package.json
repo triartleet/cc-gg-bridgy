@@ -1,0 +1,48 @@
+{
+  "name": "cc-gg-bridgy",
+  "displayName": "CC-GG-bridgy",
+  "description": "Provider switch for the Claude Code extension: Anthropic ⇄ z.ai GLM, per project, busy-gated",
+  "version": "0.0.1",
+  "publisher": "triartleet",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cc-gg-bridgy.toggle",
+        "title": "CC-GG-bridgy: Toggle Claude ⇄ GLM for this project"
+      },
+      {
+        "command": "cc-gg-bridgy.setupWrapper",
+        "title": "CC-GG-bridgy: Configure Claude Code process wrapper"
+      }
+    ],
+    "configuration": {
+      "title": "CC-GG-bridgy",
+      "properties": {
+        "ccGgBridgy.quietWindowMs": {
+          "type": "number",
+          "default": 2500,
+          "description": "Transcript must be silent this long before a session counts as idle."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.17",
+    "@types/vscode": "1.94.0",
+    "esbuild": "0.24.2",
+    "typescript": "5.7.3"
+  }
+}

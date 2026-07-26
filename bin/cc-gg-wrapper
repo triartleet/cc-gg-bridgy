@@ -1,0 +1,114 @@
+#!/bin/sh
+# CC-GG-bridgy shim for claudeCode.claudeProcessWrapper.
+# Contract (spike S1): the Claude extension launches THIS executable in place
+# of the CLI; argv may already carry the real executable (node + cli.js) or be
+# the bare CLI args when the bundled native binary is in play. Fail OPEN: on
+# any doubt, exec the real CLI untouched so Claude Code keeps working.
+
+set -u
+
+CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"
+STATE_FILE="${CONFIG_DIR}/state.json"
+GLM_ENV_FILE="${CC_GG_BRIDGY_GLM_ENV:-${CONFIG_DIR}/glm.env}"
+DEBUG_LOG="${CONFIG_DIR}/debug.log"
+# Extension stores realpath'd project keys; compare against the physical cwd.
+PWD_REAL="$(pwd -P)"
+
+debug() {
+  [ "${CC_GG_BRIDGY_DEBUG:-0}" = "1" ] || return 0
+  mkdir -p "$CONFIG_DIR"
+  if [ -f "$DEBUG_LOG" ] && [ "$(wc -c <"$DEBUG_LOG")" -gt 524288 ]; then
+    : >"$DEBUG_LOG"
+  fi
+  printf '%s | cwd=%s | %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$PWD_REAL" "$*" >>"$DEBUG_LOG"
+}
+
+# Provider for this project from state.json. Match the exact key:value PAIR
+# (both pretty-printed and compact separators) so one project's value can
+# never bleed onto another's line; unknown shapes fail closed to anthropic.
+provider() {
+  [ -f "$STATE_FILE" ] || { echo anthropic; return; }
+  if grep -Fq "\"$PWD_REAL\": \"glm\"" "$STATE_FILE" ||
+    grep -Fq "\"$PWD_REAL\":\"glm\"" "$STATE_FILE"; then
+    echo glm
+  elif grep -Fq "\"$PWD_REAL\": \"anthropic\"" "$STATE_FILE" ||
+    grep -Fq "\"$PWD_REAL\":\"anthropic\"" "$STATE_FILE"; then
+    echo anthropic
+  elif grep -Eq '"default"[[:space:]]*:[[:space:]]*"glm"' "$STATE_FILE"; then
+    echo glm
+  else
+    echo anthropic
+  fi
+}
+
+# KEY=value lines only — parsed, never sourced, so a malformed value can't
+# execute shell or half-apply the env.
+load_glm_env() {
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+    '' | \#*) continue ;;
+    [A-Za-z_]*=*) export "$line" ;;
+    *) debug "glm.env: skipped malformed line" ;;
+    esac
+  done <"$GLM_ENV_FILE"
+}
+
+# Real CLI when argv doesn't carry one: newest (by mtime) bundled binary from
+# any installed Claude extension, else the system claude.
+find_cli() {
+  newest=""
+  for d in "${HOME}/.cursor/extensions"/anthropic.claude-code-*/resources/native-binary/claude \
+    "${HOME}/.vscode/extensions"/anthropic.claude-code-*/resources/native-binary/claude; do
+    [ -x "$d" ] || continue
+    if [ -z "$newest" ] || [ "$d" -nt "$newest" ]; then
+      newest="$d"
+    fi
+  done
+  if [ -n "$newest" ]; then
+    echo "$newest"
+  else
+    command -v claude || true
+  fi
+}
+
+PROVIDER="$(provider)"
+debug "provider=$PROVIDER argv=$*"
+
+if [ "$PROVIDER" = "glm" ] && [ -f "$GLM_ENV_FILE" ]; then
+  load_glm_env
+  debug "glm env loaded from $GLM_ENV_FILE"
+fi
+
+if [ "$#" -ge 1 ]; then
+  # Interpreter-style argv (bare "node" or a .js entry) — resolve, don't guess.
+  case "$1" in
+  node)
+    NODE_BIN="$(command -v node || true)"
+    if [ -n "$NODE_BIN" ]; then
+      shift
+      debug "exec node passthrough: $NODE_BIN"
+      exec "$NODE_BIN" "$@"
+    fi
+    ;;
+  *.js)
+    NODE_BIN="$(command -v node || true)"
+    if [ -n "$NODE_BIN" ]; then
+      debug "exec node script passthrough: $NODE_BIN $1"
+      exec "$NODE_BIN" "$@"
+    fi
+    ;;
+  esac
+  if [ -f "$1" ] && [ -x "$1" ]; then
+    debug "exec passthrough: $1"
+    exec "$@"
+  fi
+fi
+
+CLI="$(find_cli)"
+if [ -n "$CLI" ]; then
+  debug "exec discovered CLI: $CLI"
+  exec "$CLI" "$@"
+fi
+
+echo "cc-gg-wrapper: no Claude CLI found" >&2
+exit 127

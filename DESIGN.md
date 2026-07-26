@@ -41,8 +41,10 @@ already exists natively.
    rejected for v1. Terminal fallback (`claude --resume <id>` under swapped
    env) stays available manually.
 4. **Scope: per-project.** State keyed by workspace folder; the shim resolves
-   the project from its cwd. A scratch repo can run GLM while another repository stays on
-   Opus in the same instant.
+   the project from its cwd. A scratch repo can run GLM while another project
+   stays on Anthropic (Fable/Opus — the owner switches models per task via
+   /model; bridgy toggles the PROVIDER and never touches the model choice) in
+   the same instant.
 
 ## Architecture
 

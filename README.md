@@ -2,6 +2,11 @@
 
 <div align="center">
   <img src="media/bridgy-logo.png" width="220" alt="CC-GG-bridgy — a bee with a stinger, ready to switch providers">
+  <p>
+    <a href="https://marketplace.visualstudio.com/items?itemName=alkisyuv.cc-gg-bridgy"><img src="https://img.shields.io/visual-studio-marketplace/v/alkisyuv.cc-gg-bridgy?label=VS%20Marketplace&color=0066b8" alt="VS Marketplace"></a>
+    <a href="https://open-vsx.org/extension/alkisyuv/cc-gg-bridgy"><img src="https://img.shields.io/open-vsx/v/alkisyuv/cc-gg-bridgy?label=Open%20VSX&color=a60ee5" alt="Open VSX"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+  </p>
 </div>
 
 A tiny Cursor/VS Code companion extension that adds the one thing the official
@@ -78,7 +83,16 @@ Validated live against Claude Code extension 2.1.220 (see
 
 ## Install
 
-Not on any marketplace (yet) — build from source:
+From a marketplace:
+
+- **Cursor / VSCodium** — search **"cc-gg-bridgy"** in the Extensions panel
+  (served from [Open VSX](https://open-vsx.org/extension/alkisyuv/cc-gg-bridgy)),
+  or `cursor --install-extension alkisyuv.cc-gg-bridgy`.
+- **VS Code** — install from the
+  [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=alkisyuv.cc-gg-bridgy),
+  or `code --install-extension alkisyuv.cc-gg-bridgy`.
+
+Or build from source:
 
 ```bash
 git clone https://github.com/triartleet/cc-gg-bridgy

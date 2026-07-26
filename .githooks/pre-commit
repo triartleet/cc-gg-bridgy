@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# etymd: process gate. Cheap, locally-knowable checks belong here (fast, blocks the commit).
+exit 0

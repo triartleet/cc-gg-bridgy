@@ -1,0 +1,175 @@
+{
+  "packVersion": "1",
+  "etymdVersion": "0.0.1",
+  "approvedAt": "2026-07-26T19:45:04.855Z",
+  "profile": "solo",
+  "facts": {
+    "etymdVersion": "0.0.1",
+    "packVersion": "1",
+    "generatedAt": "2026-07-26T19:45:04.835Z",
+    "root": "/Users/user/projects/cc-gg-bridgy",
+    "name": "cc-gg-bridgy",
+    "git": {
+      "isRepo": true,
+      "branch": "main",
+      "head": "17fb96b",
+      "husky": false,
+      "recentAuthors": 1
+    },
+    "packageManager": "pnpm",
+    "workspace": {
+      "kind": "pnpm",
+      "packageGlobs": []
+    },
+    "packages": [],
+    "frameworks": [],
+    "commands": {
+      "raw": {
+        "build": "node esbuild.mjs",
+        "watch": "node esbuild.mjs --watch",
+        "typecheck": "tsc --noEmit"
+      },
+      "typecheck": "typecheck",
+      "build": "build"
+    },
+    "ci": {
+      "system": "none",
+      "files": []
+    },
+    "hooks": {
+      "source": "none",
+      "preCommit": false,
+      "prePush": false,
+      "commitMsg": false,
+      "lintStaged": false
+    },
+    "artifacts": [
+      {
+        "id": "agents",
+        "label": "AGENTS.md (operating contract)",
+        "path": "AGENTS.md",
+        "kind": "contract",
+        "exists": false
+      },
+      {
+        "id": "project-context",
+        "label": "PROJECT_CONTEXT.md (ground-truth state)",
+        "path": "PROJECT_CONTEXT.md",
+        "kind": "state",
+        "exists": false
+      },
+      {
+        "id": "claude",
+        "label": "CLAUDE.md (Claude Code pointer)",
+        "path": "CLAUDE.md",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "copilot",
+        "label": "Copilot instructions",
+        "path": ".github/copilot-instructions.md",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "cursorrules",
+        "label": ".cursorrules (legacy Cursor)",
+        "path": ".cursorrules",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "cursor-rules",
+        "label": ".cursor/rules",
+        "path": ".cursor/rules",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "gemini",
+        "label": "GEMINI.md",
+        "path": "GEMINI.md",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "cline",
+        "label": ".clinerules",
+        "path": ".clinerules",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "windsurf",
+        "label": ".windsurfrules",
+        "path": ".windsurfrules",
+        "kind": "adapter",
+        "exists": false
+      },
+      {
+        "id": "skills",
+        "label": "Agent skills (.claude/skills)",
+        "path": ".claude/skills",
+        "kind": "skill",
+        "exists": false
+      },
+      {
+        "id": "failure-modes-skill",
+        "label": "Failure-modes register (skill)",
+        "path": ".claude/skills/failure-modes",
+        "kind": "skill",
+        "exists": false
+      },
+      {
+        "id": "failure-modes-doc",
+        "label": "Failure-modes register (doc)",
+        "path": "docs/failure-modes.md",
+        "kind": "other",
+        "exists": false
+      },
+      {
+        "id": "sessions",
+        "label": "Session archive (docs/sessions)",
+        "path": "docs/sessions",
+        "kind": "sessions",
+        "exists": false
+      },
+      {
+        "id": "githooks",
+        "label": "Tracked git hooks (.githooks)",
+        "path": ".githooks",
+        "kind": "gate",
+        "exists": false
+      },
+      {
+        "id": "inventory",
+        "label": "Reuse inventory (docs/INVENTORY.md)",
+        "path": "docs/INVENTORY.md",
+        "kind": "map",
+        "exists": false
+      }
+    ],
+    "tree": {
+      "dirs": [
+        {
+          "name": "src",
+          "files": 5
+        },
+        {
+          "name": ".vscode",
+          "files": 2
+        },
+        {
+          "name": "media",
+          "files": 2
+        },
+        {
+          "name": "bin",
+          "files": 1
+        }
+      ],
+      "truncated": false
+    }
+  }
+}

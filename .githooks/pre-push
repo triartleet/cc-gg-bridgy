@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# etymd: correctness gate. Mirrors CI cheapest-first; blocks the push on any failure.
+echo "› pnpm typecheck"
+pnpm typecheck || exit 1

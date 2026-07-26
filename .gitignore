@@ -6,3 +6,4 @@ dist/
 *.env
 state.json
 *.vsix
+.etymd/cache/

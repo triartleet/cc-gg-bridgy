@@ -1,6 +1,6 @@
 {
   // Centered logo in README uses <p>/<img> — the GitHub-README idiom.
-  "MD033": { "allowed_elements": ["p", "img"] },
+  "MD033": { "allowed_elements": ["div", "p", "img"] },
   // Prose wrapping is the editor's job, not a lint gate.
   "MD013": false
 }

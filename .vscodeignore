@@ -1,5 +1,6 @@
 .vscode/**
 src/**
+media/logo.png
 node_modules/**
 esbuild.mjs
 tsconfig.json

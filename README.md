@@ -1,5 +1,9 @@
 # CC-GG-bridgy
 
+<p align="center">
+  <img src="media/logo.png" width="220" alt="CC-GG-bridgy — a bee with a stinger, ready to switch providers">
+</p>
+
 A tiny Cursor/VS Code companion extension that adds the one thing the official
 Claude Code extension doesn't have: a **provider switch**. One status-bar
 button flips your next Claude Code session between **Anthropic (Claude

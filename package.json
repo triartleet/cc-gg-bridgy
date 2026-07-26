@@ -4,7 +4,6 @@
   "description": "Provider switch for the Claude Code extension: Anthropic ⇄ z.ai GLM, per project, busy-gated",
   "version": "0.1.0",
   "publisher": "triartleet",
-  "private": true,
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,6 +18,10 @@
   },
   "categories": ["Other"],
   "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#f6ece3",
+    "theme": "light"
+  },
   "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {

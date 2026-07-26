@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import * as fs from "node:fs"
 import * as path from "node:path"
+import { beam } from "./beam"
 import { classify, SessionActivity } from "./busy"
 import { Provider, providerFor, setProvider, stateDir } from "./state"
 import { currentUsage, formatReset, ProviderUsage, refreshUsage } from "./usage"
@@ -152,6 +153,14 @@ export function activate(context: vscode.ExtensionContext): void {
     statusItem,
     vscode.commands.registerCommand("cc-gg-bridgy.toggle", toggle),
     vscode.commands.registerCommand("cc-gg-bridgy.setupWrapper", () => setupWrapper(context)),
+    vscode.commands.registerCommand("cc-gg-bridgy.beam", () => {
+      const ws = workspacePath()
+      if (!ws) {
+        void vscode.window.showWarningMessage("CC-GG-bridgy: open a workspace folder first.")
+        return
+      }
+      void beam(ws, quietWindowMs())
+    }),
   )
   pollTimer = setInterval(refresh, POLL_MS)
   usageTimer = setInterval(() => void refreshUsage().then(refresh), USAGE_POLL_MS)

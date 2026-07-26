@@ -9,12 +9,15 @@
   </p>
 </div>
 
-A tiny Cursor/VS Code companion extension that adds the one thing the official
-Claude Code extension doesn't have: a **provider switch**. One status-bar
+A tiny Cursor/VS Code companion extension that adds two things the official
+Claude Code extension doesn't have. A **provider switch**: one status-bar
 button flips your next Claude Code session between **Anthropic (Claude
 subscription)** and **z.ai (GLM Coding Plan)** — same extension UI, same
-session history, both directions. It also shows **both providers' 5-hour
-usage** side by side, right in the status bar.
+session history, both directions, with **both providers' 5-hour usage**
+side by side in the status bar. And a **beam command**: the extension UI
+exposes no Remote Control, so bridgy hands your active session to a
+terminal with it enabled — one palette command and the session is on your
+phone, execution still on your machine.
 
 ```text
 ⇄ Claude · C 28% · G 1%
@@ -43,6 +46,13 @@ Validated live against Claude Code extension 2.1.220 (see
 - **Native session handoff** — transcripts are provider-agnostic and shared,
   so after a toggle you just start a new conversation and resume the previous
   session from Claude Code's own session list. Nothing is copied or proxied.
+- **Beam to phone (Remote Control)** — one command resumes the project's
+  active session in an integrated terminal with Claude Code's Remote Control
+  enabled, so you can watch it, answer its questions, and send it next steps
+  from the Claude mobile/web apps while execution stays on your machine.
+  Busy-gated like the toggle, and launched with
+  `--permission-mode bypassPermissions` so the away-run doesn't stall on
+  prompts.
 - **Fail-open by design** — on any doubt (missing state, unreadable config,
   provider endpoint down) the wrapper execs the real CLI untouched and the
   usage rows show the reason instead of erroring. Claude Code keeps working
@@ -71,6 +81,15 @@ Validated live against Claude Code extension 2.1.220 (see
   ANTHROPIC_SMALL_FAST_MODEL=glm-4.7
   ```
 
+- **Beam = native handoff + Remote Control.** The extension UI can't enable
+  Anthropic's Remote Control (a research preview for terminal sessions), but
+  the session store is shared — so beam resumes the project's active session
+  in an integrated terminal as
+  `claude --resume <id> --remote-control <name> --permission-mode bypassPermissions`,
+  under the project's provider env. The session then appears in the Claude
+  iOS/Android app and at claude.ai/code while execution stays local. Round
+  trip verified: `/exit` the terminal and resume from the panel's local
+  session list — phone turns included.
 - **Busy detection** — bridgy finds the project's live session via Claude
   Code's session registry (`~/.claude/sessions/<pid>.json`), then classifies
   busy/idle from the transcript tail (including nested subagent activity).
@@ -143,6 +162,21 @@ conversation keeps the provider it started on, by design. To continue a
 conversation on the other provider, resume it from Claude Code's session
 list; the transcript carries over natively.
 
+**Beam a session to your phone** before stepping away: run
+**`CC-GG-bridgy: Beam session to phone (Remote Control)`** from the command
+palette. Bridgy resumes the project's active session in an integrated
+terminal with `--remote-control`, under the project's provider env (the
+first beam may ask you to pair with your Claude account). The session then
+shows up in the Claude iOS/Android app and at claude.ai/code, mirrored live
+— answer its questions, send the next step, switch models with `/model`. If
+the extension conversation for that session is still open, close it: two
+surfaces replying to one session will fork it.
+
+To come back, `/exit` the beamed terminal (Remote Control ends with the
+process), then resume the session from the Claude panel's **local** session
+list — a fresh resume re-reads the whole transcript, phone turns included.
+Don't reopen the old conversation tab: it restores the stale pre-beam head.
+
 Settings: `ccGgBridgy.quietWindowMs` — how long the transcript must be
 silent before a session counts as idle (default 2500 ms).
 
@@ -163,6 +197,14 @@ argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
 - **The busy heuristic reads safe, not perfect.** Long silent tool
   executions and permission prompts read as busy; the forced-switch confirm
   covers the rest.
+- **Beam is a handoff, not a mirror, on the desk side.** The extension panel
+  won't show turns made from the phone — reopen the session from Claude
+  Code's session list when you're back. Remote Control itself is an Anthropic
+  research preview tied to your Claude account login, and it is disabled by
+  the CLI whenever `ANTHROPIC_BASE_URL` is set — so a beamed GLM session
+  runs as a normal local terminal session without phone reach. Bridgy never flips the "Enable Remote
+  Control for all sessions" setting — ambient reach for plain terminal
+  sessions stays your own `/config` choice.
 - **Closed-source churn.** Anthropic can change the wrapper setting or spawn
   path in any release (the extension auto-updates). The shim fails open, so
   the failure mode is "toggle silently does nothing", never a broken Claude
@@ -172,9 +214,11 @@ argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
 
 ## Roadmap
 
+- **GLM remote reach** (next up): official Remote Control is Anthropic-only
+  (the CLI disables it whenever `ANTHROPIC_BASE_URL` is set), so investigate
+  remote control for GLM-served sessions — Happy-style open-source bridges,
+  or other angles.
 - Button in the Claude panel's title bar beside the status-bar item.
-- Auto-resume: open an integrated terminal running
-  `claude --resume <newest-session-id>` under the target env.
 - Per-session provider badges in the tooltip (from transcript `model`
   fields).
 - Named env profiles instead of the fixed `anthropic | glm` pair — a

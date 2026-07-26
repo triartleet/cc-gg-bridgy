@@ -152,37 +152,57 @@ function tailImpliesOpenTurn(file: string): boolean {
   }
 }
 
-export function classify(projectPath: string, quietWindowMs: number): SessionActivity {
+export interface ActiveSession {
+  sessionId: string
+  file: string
+  // True when the live-session registry says a running process still holds
+  // this id — resuming it elsewhere makes two writers on one transcript.
+  live: boolean
+  newestActivityMs: number
+}
+
+export function resolveActiveSession(projectPath: string): ActiveSession | null {
   const dir = sessionDirFor(projectPath)
   const live = liveSessionIds(projectPath)
 
-  let transcript: { file: string; mtimeMs: number } | null = null
+  let picked: { id: string; file: string; mtimeMs: number } | null = null
   let newestActivity = 0
   if (live.length > 0) {
     for (const id of live) {
       const file = path.join(dir, `${id}.jsonl`)
       try {
         const st = fs.statSync(file)
-        if (!transcript || st.mtimeMs > transcript.mtimeMs)
-          transcript = { file, mtimeMs: st.mtimeMs }
+        if (!picked || st.mtimeMs > picked.mtimeMs) picked = { id, file, mtimeMs: st.mtimeMs }
       } catch {
         continue
       }
       newestActivity = Math.max(newestActivity, newestMtimeUnder(path.join(dir, id), 5))
     }
   }
-  if (!transcript) {
-    transcript = newestTopLevelTranscript(dir)
-    if (transcript) {
-      const sessionSubdir = path.join(dir, path.basename(transcript.file, ".jsonl"))
-      newestActivity = newestMtimeUnder(sessionSubdir, 5)
+  if (!picked) {
+    const t = newestTopLevelTranscript(dir)
+    if (t) {
+      const id = path.basename(t.file, ".jsonl")
+      picked = { id, file: t.file, mtimeMs: t.mtimeMs }
+      newestActivity = newestMtimeUnder(path.join(dir, id), 5)
     }
   }
-  if (!transcript) return "no-session"
+  if (!picked) return null
 
-  newestActivity = Math.max(newestActivity, transcript.mtimeMs)
-  const age = Date.now() - newestActivity
+  return {
+    sessionId: picked.id,
+    file: picked.file,
+    live: live.includes(picked.id),
+    newestActivityMs: Math.max(newestActivity, picked.mtimeMs),
+  }
+}
+
+export function classify(projectPath: string, quietWindowMs: number): SessionActivity {
+  const session = resolveActiveSession(projectPath)
+  if (!session) return "no-session"
+
+  const age = Date.now() - session.newestActivityMs
   if (age < quietWindowMs) return "busy"
   if (age > STALE_MS) return "idle"
-  return tailImpliesOpenTurn(transcript.file) ? "busy" : "idle"
+  return tailImpliesOpenTurn(session.file) ? "busy" : "idle"
 }

@@ -197,6 +197,27 @@ provider it started on, by design. To continue a conversation on the other
 provider, resume it from Claude Code's session list; the transcript carries
 over natively.
 
+### Switching models (within a provider)
+
+Each profile maps Claude Code's four model tiers — `fable` / `opus` / `sonnet` /
+`haiku` — to a **distinct** model from that provider, so the native **`/model`
+picker is your model switcher**: pick a tier, get that model, live, no restart.
+The tiers relabel to the provider's model names (e.g. *Kimi K3 (flagship)*,
+*Kimi K2.7 Code*, *GLM-5.2 (1M)*) because the profile sets the
+`ANTHROPIC_DEFAULT_<TIER>_MODEL` family. Two things to know:
+
+- **Relabeling only shows in a conversation that started under the provider.**
+  `/model` reads the env at spawn time, so a conversation that started on
+  Anthropic keeps showing Claude names forever — start a new conversation after
+  switching providers to see the provider's models in `/model`.
+- **More than four models?** Claude Code caps the picker at the four tiers, so
+  for any model beyond them type it raw: **`/model kimi-for-coding-highspeed`**
+  (or whatever the provider serves). Behind a custom endpoint the string is
+  passed through verbatim — no recognition check.
+
+Confirm what's actually serving a turn with **`/status`**, not `/model` — the
+transcript's per-turn `model` field is the ground truth.
+
 **Beam a session to your phone** before stepping away: run
 **`CC-GG-bridgy: Beam session to phone (Remote Control)`** from the command
 palette. Bridgy resumes the project's active session in an integrated
@@ -236,7 +257,9 @@ argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
   this shipped. Their endpoint has documented gaps you should expect
   in-session: WebFetch is
   broken, Tool Search must stay disabled, prompt caching is Kimi's own
-  implicit kind, and `/model` won't list Kimi models — `/status` is the
+  implicit kind. `/model` relabels to Kimi names **only in a conversation
+  started under Kimi** (see *Switching models*); an Anthropic-started one
+  keeps Claude names. `/status` is the
   truth surface. The usage endpoint is community-documented; if its shape
   shifts, the Kimi column degrades to "usage unavailable" rather than
   breaking anything.

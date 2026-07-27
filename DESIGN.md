@@ -85,6 +85,26 @@ already exists natively.
    are recorded in the project memory note `kimi-provider-feasibility`
    (researched 2026-07-27, **not yet validated live** — no Kimi Code
    subscription at build time).
+7. **Model switching via the tier palette** (added 2026-07-27). Investigated
+   in depth: Claude Code's `/model` picker is fed by the
+   `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU,FABLE}_MODEL` env-var family — NOT by
+   the provider's `/v1/models` (verified live: z.ai 404s it yet relabels; Kimi
+   serves it yet didn't relabel), and the opt-in gateway discovery drops any
+   id not starting `claude`/`anthropic` (useless for `glm-*`/`k3-*`). The four
+   tiers are therefore both the relabeling surface AND the model switcher: a
+   profile maps each tier to a distinct provider model, so picking a tier in
+   `/model` switches models live (no restart), capped at four visible — with
+   `/model <raw-id>` passthrough as the escape hatch for any fifth+ model
+   (verbatim behind a custom base URL, no recognition check). Profiles MUST set
+   the full family + `CLAUDE_CODE_SUBAGENT_MODEL` (NOT `ANTHROPIC_MODEL` alone,
+   which sets the served model but does not relabel rows), map tiers to DISTINCT
+   models to make the switcher meaningful, and add `*_MODEL_NAME`/`_DESCRIPTION`
+   companions for friendly picker labels (those work behind
+   `ANTHROPIC_BASE_URL`; `*_SUPPORTED_CAPABILITIES` does not). Relabeling only
+   appears in a conversation spawned under the provider — an Anthropic-started
+   conversation has no provider env, so `/model` keeps Claude names by design;
+   `/status` (transcript per-turn `model` field) is the ground truth. Mechanism
+   recorded in the project memory note `model-picker-mechanism`.
 
 ## Architecture
 
@@ -319,11 +339,13 @@ Components:
   debt. Everything still degrades fail-open: wrong quota schema → "usage
   unavailable"; wrong env contract → the CLI's own auth error, never a
   broken Claude Code.
-- **Model slot surprises under GLM.** The `/model` list reflects the mapped
-  GLM names (verified live — better than the "UI still shows Claude names"
-  fear), but a fresh conversation may open on the small/haiku slot rather
-  than the flagship mapping. The status bar stays the provider truth surface;
-  model choice stays the user's.
+- **Model slot surprises under GLM / Kimi.** With the full tier family set
+  (decision 7), `/model` relabels to the provider's model names in a
+  provider-started conversation; a fresh conversation opens on the default
+  tier (flagship). Gotchas that remain: an Anthropic-started conversation
+  keeps Claude names in `/model` (no provider env at spawn); the picker is
+  capped at four tiers (use `/model <raw-id>` for more); `/status` is the
+  ground truth for what's actually serving.
 
 ## Non-goals
 

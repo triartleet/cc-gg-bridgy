@@ -226,9 +226,12 @@ argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
 - **A fresh GLM conversation may open on the small/fast model slot** (e.g.
   `glm-4.7`) depending on the panel's sticky model choice — check `/model`
   after switching. Bridgy deliberately never touches model choice.
-- **Kimi support is built to Moonshot's docs but not yet validated live**
-  (no Kimi Code account was harmed in the making of this release). Their
-  endpoint has documented gaps you should expect in-session: WebFetch is
+- **Kimi: the pay-as-you-go leg is validated live** (Moonshot Open
+  Platform endpoint, env contract, model-slot pinning, real CLI turn served
+  by `kimi-k3`); the **Kimi Code plan endpoint and its usage readout are
+  not yet** — new Kimi Code subscriptions were paused for capacity when
+  this shipped. Their endpoint has documented gaps you should expect
+  in-session: WebFetch is
   broken, Tool Search must stay disabled, prompt caching is Kimi's own
   implicit kind, and `/model` won't list Kimi models — `/status` is the
   truth surface. The usage endpoint is community-documented; if its shape

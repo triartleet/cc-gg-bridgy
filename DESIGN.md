@@ -252,6 +252,26 @@ Components:
   (symbol-checked). Caveat: a fresh GLM conversation may open on the
   small/haiku slot — check `/model` after a toggle; bridgy never touches
   model choice (decision 4).
+- **S6 — Kimi PAYG leg via env injection: PASS (validated live 2026-07-27,
+  Moonshot Open Platform key — Kimi Code subscriptions were paused).**
+  Chain validated bottom-up: balance endpoint
+  (`GET /v1/users/me/balance`, Bearer) → key live;
+  `POST /anthropic/v1/messages` (x-api-key) → proper Anthropic Messages
+  shape served by `kimi-k3` with a `thinking` block (K3 thinks by
+  default, confirmed); the NEW shim in an isolated fake-HOME injected all
+  12 kimi.env vars for a kimi-mapped cwd and ZERO ANTHROPIC vars for a
+  default cwd; `claude -p` under the profile env returned the exact
+  sentinel with `modelUsage: kimi-k3`, contextWindow 262144 honored from
+  `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, no login prompt (a benign
+  "claude.ai connectors disabled" warning appears — expected under any
+  provider override). Confirmed from usage fields:
+  `cache_creation_input_tokens: 0` (Kimi ignores cache markers —
+  implicit cache only; a cold `-p` turn read just 768 cached of 38.4k
+  input tokens and cost **$0.195**, so PAYG is for spikes, not daily
+  use). Balance readout lags billing (still $10.00 immediately after two
+  billed calls). NOT yet validated: the Kimi Code plan endpoint
+  (`api.kimi.com/coding/`), its auth-var behavior, and the
+  `/coding/v1/usages` quota schema — blocked on subscriptions reopening.
 - **S5 — live-session registry semantics: PASS.** Clean exits remove
   `~/.claude/sessions/<pid>.json` — observed on both a session's own exit
   and window close. SIGKILL leaves a stale entry that nothing reaps, not
@@ -288,13 +308,14 @@ Components:
   Anthropic. A GLM beam therefore opens a local-only terminal session
   (fail-open, still controllable at the desk); Happy-style tools are the
   only remote-reach option for the GLM leg.
-- **Kimi leg is doc-built, not live-validated.** No Kimi Code subscription
-  existed at build time (min $19/mo), so S4-style spikes (wrapper-env auth,
-  which auth var the plan endpoint honors, fresh-conversation slot
-  behavior) and the usages-endpoint response shape are open verification
-  debt. Everything Kimi-specific degrades fail-open: wrong quota schema →
-  "usage unavailable"; wrong env contract → the CLI's own auth error, never
-  a broken Claude Code.
+- **Kimi Code plan endpoint + quota adapter not live-validated.** The PAYG
+  leg is proven (S6: endpoint, env contract, slot pinning, CLI turn), but
+  Kimi Code subscriptions have been paused since 2026-07-19 (K3 demand;
+  batched reopening announced), so the plan endpoint's auth-var behavior
+  and the `/coding/v1/usages` response shape remain open verification
+  debt. Everything still degrades fail-open: wrong quota schema → "usage
+  unavailable"; wrong env contract → the CLI's own auth error, never a
+  broken Claude Code.
 - **Model slot surprises under GLM.** The `/model` list reflects the mapped
   GLM names (verified live — better than the "UI still shows Claude names"
   fear), but a fresh conversation may open on the small/haiku slot rather

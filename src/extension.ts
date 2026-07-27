@@ -3,7 +3,16 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { beam } from "./beam"
 import { classify, SessionActivity } from "./busy"
-import { Provider, providerFor, setProvider, stateDir } from "./state"
+import {
+  ANTHROPIC,
+  displayName,
+  letterFor,
+  listProviders,
+  Provider,
+  providerFor,
+  setProvider,
+  stateDir,
+} from "./state"
 import { currentUsage, formatReset, ProviderUsage, refreshUsage } from "./usage"
 
 const POLL_MS = 2000
@@ -34,27 +43,24 @@ function usageLine(name: string, u: ProviderUsage | null, weeklyLabel: string): 
 }
 
 function render(provider: Provider, activity: SessionActivity): void {
-  const label = provider === "glm" ? "GLM" : "Claude"
+  const label = displayName(provider)
   const icon = activity === "busy" ? "$(sync~spin)" : "$(arrow-swap)"
   const usage = currentUsage()
-  const active = provider === "glm" ? usage.glm : usage.anthropic
-  const fiveHourPct = (u: ProviderUsage | null): string | null =>
-    u?.fiveHour ? `${Math.round(u.fiveHour.pct)}%` : null
-  const aPct = fiveHourPct(usage.anthropic)
-  const gPct = fiveHourPct(usage.glm)
-  statusItem.text = [
-    `${icon} ${label}`,
-    ...(aPct ? [`C ${aPct}`] : []),
-    ...(gPct ? [`G ${gPct}`] : []),
-  ].join(" · ")
+  const providers = listProviders()
+  const active = usage.providers[provider] ?? null
+  const inline = providers.flatMap((p) => {
+    const u = usage.providers[p]
+    return u?.fiveHour ? [`${letterFor(p)} ${Math.round(u.fiveHour.pct)}%`] : []
+  })
+  statusItem.text = [`${icon} ${label}`, ...inline].join(" · ")
   statusItem.tooltip = new vscode.MarkdownString(
     [
       `**CC-GG-bridgy** — next Claude Code session runs on **${label}**`,
       "",
-      usageLine("Claude", usage.anthropic, "7d"),
-      "",
-      usageLine("GLM", usage.glm, "wk"),
-      "",
+      ...providers.flatMap((p) => [
+        usageLine(displayName(p), usage.providers[p] ?? null, p === ANTHROPIC ? "7d" : "wk"),
+        "",
+      ]),
       activity === "busy"
         ? "Session activity detected — switching is gated until the answer lands."
         : activity === "no-session"
@@ -80,10 +86,39 @@ function refresh(): void {
   render(providerFor(ws), classify(ws, quietWindowMs()))
 }
 
+// Exactly two providers → flip straight to the other one (the one-click flow
+// from the binary era). Three or more → QuickPick with each provider's 5h %.
+async function pickProvider(
+  current: Provider,
+  providers: Provider[],
+): Promise<Provider | undefined> {
+  if (providers.length === 2) return providers.find((p) => p !== current)
+  const usage = currentUsage()
+  const items = providers.map((p) => {
+    const u = usage.providers[p]
+    return {
+      label: `${p === current ? "$(check) " : ""}${displayName(p)}`,
+      description: u?.fiveHour ? `5h ${Math.round(u.fiveHour.pct)}%` : "usage —",
+      provider: p,
+    }
+  })
+  const picked = await vscode.window.showQuickPick(items, {
+    placeHolder: "Provider for the next Claude Code conversation in this project",
+  })
+  return picked?.provider
+}
+
 async function toggle(): Promise<void> {
   const ws = workspacePath()
   if (!ws) {
     void vscode.window.showWarningMessage("CC-GG-bridgy: open a workspace folder first.")
+    return
+  }
+  const providers = listProviders()
+  if (providers.length < 2) {
+    void vscode.window.showWarningMessage(
+      "CC-GG-bridgy: no provider profiles found — create ~/.config/cc-gg-bridgy/<name>.env (e.g. glm.env) first.",
+    )
     return
   }
   const activity = classify(ws, quietWindowMs())
@@ -95,13 +130,14 @@ async function toggle(): Promise<void> {
     )
     if (force !== "Switch anyway") return
   }
-  const next: Provider = providerFor(ws) === "glm" ? "anthropic" : "glm"
+  const current = providerFor(ws)
+  const next = await pickProvider(current, providers)
+  if (!next || next === current) return
   setProvider(ws, next)
   void refreshUsage().then(refresh)
   refresh()
-  const label = next === "glm" ? "GLM (z.ai)" : "Claude (Anthropic)"
   const picked = await vscode.window.showInformationMessage(
-    `Now on ${label} for ${path.basename(ws)}. Start a new conversation, then resume the previous session from the Claude panel's session list to continue it there.`,
+    `Now on ${displayName(next)} for ${path.basename(ws)}. Start a new conversation, then resume the previous session from the Claude panel's session list to continue it there.`,
     "New conversation",
     "Reload window",
   )

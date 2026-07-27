@@ -10,7 +10,6 @@ set -u
 
 CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"
 STATE_FILE="${CONFIG_DIR}/state.json"
-GLM_ENV_FILE="${CC_GG_BRIDGY_GLM_ENV:-${CONFIG_DIR}/glm.env}"
 DEBUG_LOG="${CONFIG_DIR}/debug.log"
 # The extension's spawn env is not injectable from outside, so a flag FILE
 # also enables debug; an explicit env value (even 0) still wins.
@@ -29,19 +28,30 @@ debug() {
   printf '%s | cwd=%s | %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$PWD_REAL" "$*" >>"$DEBUG_LOG"
 }
 
-# Provider for this project from state.json. Match the exact key:value PAIR
-# (both pretty-printed and compact separators) so one project's value can
-# never bleed onto another's line; unknown shapes fail closed to anthropic.
+# Provider for this project from state.json. A provider is any name with an
+# env profile at ${CONFIG_DIR}/<name>.env; "anthropic" is reserved for the
+# clean-env passthrough. The quoted key is matched as a FIXED string (both
+# quotes included, so one path can never prefix-match another) and the value
+# is whatever quoted token follows its colon — pretty-printed and compact
+# separators both parse. The value charset is restricted; a missing or
+# malformed project value falls through to "default" (mirroring the
+# extension's readState), and anything still unresolved fails closed to
+# anthropic.
+value_for_key() {
+  line="$(grep -F "$1" "$STATE_FILE" | head -n 1)"
+  [ -n "$line" ] || return 0
+  rest="${line#*"$1"}"
+  printf '%s\n' "$rest" | sed -n 's/^[[:space:]]*:[[:space:]]*"\([A-Za-z0-9_-]*\)".*/\1/p'
+}
+
 provider() {
   [ -f "$STATE_FILE" ] || { echo anthropic; return; }
-  if grep -Fq "\"$PWD_REAL\": \"glm\"" "$STATE_FILE" ||
-    grep -Fq "\"$PWD_REAL\":\"glm\"" "$STATE_FILE"; then
-    echo glm
-  elif grep -Fq "\"$PWD_REAL\": \"anthropic\"" "$STATE_FILE" ||
-    grep -Fq "\"$PWD_REAL\":\"anthropic\"" "$STATE_FILE"; then
-    echo anthropic
-  elif grep -Eq '"default"[[:space:]]*:[[:space:]]*"glm"' "$STATE_FILE"; then
-    echo glm
+  value="$(value_for_key "\"$PWD_REAL\"")"
+  if [ -z "$value" ]; then
+    value="$(value_for_key '"default"')"
+  fi
+  if [ -n "$value" ]; then
+    echo "$value"
   else
     echo anthropic
   fi
@@ -49,14 +59,14 @@ provider() {
 
 # KEY=value lines only — parsed, never sourced, so a malformed value can't
 # execute shell or half-apply the env.
-load_glm_env() {
+load_env_file() {
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
     '' | \#*) continue ;;
     [A-Za-z_]*=*) export "${line?}" ;;
-    *) debug "glm.env: skipped malformed line" ;;
+    *) debug "$1: skipped malformed line" ;;
     esac
-  done <"$GLM_ENV_FILE"
+  done <"$1"
 }
 
 # Real CLI when argv doesn't carry one: newest (by mtime) bundled binary from
@@ -80,9 +90,18 @@ find_cli() {
 PROVIDER="$(provider)"
 debug "provider=$PROVIDER argv=$*"
 
-if [ "$PROVIDER" = "glm" ] && [ -f "$GLM_ENV_FILE" ]; then
-  load_glm_env
-  debug "glm env loaded from $GLM_ENV_FILE"
+if [ "$PROVIDER" != "anthropic" ]; then
+  ENV_FILE="${CONFIG_DIR}/${PROVIDER}.env"
+  # Back-compat override from the glm-only era.
+  if [ "$PROVIDER" = "glm" ] && [ -n "${CC_GG_BRIDGY_GLM_ENV:-}" ]; then
+    ENV_FILE="$CC_GG_BRIDGY_GLM_ENV"
+  fi
+  if [ -f "$ENV_FILE" ]; then
+    load_env_file "$ENV_FILE"
+    debug "provider env loaded from $ENV_FILE"
+  else
+    debug "no env profile at $ENV_FILE — running clean (anthropic)"
+  fi
 fi
 
 if [ "$#" -ge 1 ]; then

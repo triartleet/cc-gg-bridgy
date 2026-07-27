@@ -8,11 +8,12 @@ against the actual repo — update this file when the repo changes, or `etymd au
 ## What this project is
 
 A Cursor/VS Code companion extension for the Claude Code extension: a per-project provider
-toggle (Anthropic ⇄ GLM) implemented as a wrapper shim around the Claude binary, plus a status
-bar with dual-provider usage readout and a `beam` command that hands the active session to
-Anthropic Remote Control for phone/web reach. Built for the owner's daily dual-provider use;
-published publicly (MIT) for anyone on the same setup. `DESIGN.md` is the decision record;
-`README.md` is the user-facing guide — keep that split.
+switch (Anthropic ⇄ named env profiles — GLM, Kimi, any Anthropic-compatible endpoint)
+implemented as a wrapper shim around the Claude binary, plus a status bar with per-provider
+usage readout and a `beam` command that hands the active session to Anthropic Remote Control
+for phone/web reach. Built for the owner's daily multi-provider use; published publicly (MIT)
+for anyone on the same setup. `DESIGN.md` is the decision record; `README.md` is the
+user-facing guide — keep that split.
 
 ## Stack
 

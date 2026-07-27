@@ -1,8 +1,8 @@
 {
   "name": "cc-gg-bridgy",
   "displayName": "CC-GG-bridgy",
-  "description": "Provider switch for the Claude Code extension: Anthropic ⇄ z.ai GLM, per project, busy-gated — plus one-command beam of the active session to your phone via Remote Control",
-  "version": "0.2.0",
+  "description": "Provider switch for the Claude Code extension: Anthropic ⇄ any Anthropic-compatible endpoint (z.ai GLM, Kimi, …) via named env profiles, per project, busy-gated — plus one-command beam of the active session to your phone via Remote Control",
+  "version": "0.3.0",
   "publisher": "alkisyuv",
   "license": "MIT",
   "repository": {
@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/triartleet/cc-gg-bridgy/issues"
   },
-  "keywords": ["claude-code", "cursor", "z.ai", "glm", "provider-switch", "anthropic", "remote-control"],
+  "keywords": ["claude-code", "cursor", "z.ai", "glm", "kimi", "moonshot", "provider-switch", "anthropic", "remote-control"],
   "engines": {
     "vscode": "^1.94.0"
   },
@@ -28,7 +28,7 @@
     "commands": [
       {
         "command": "cc-gg-bridgy.toggle",
-        "title": "CC-GG-bridgy: Toggle Claude ⇄ GLM for this project"
+        "title": "CC-GG-bridgy: Switch provider for this project (Claude ⇄ GLM ⇄ …)"
       },
       {
         "command": "cc-gg-bridgy.setupWrapper",

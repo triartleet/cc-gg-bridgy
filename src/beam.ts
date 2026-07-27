@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { classify, resolveActiveSession } from "./busy"
-import { providerFor } from "./state"
+import { ANTHROPIC, displayName, envFileFor, Provider, providerFor } from "./state"
 
 // Beam = resume this project's active session in an integrated terminal with
 // Remote Control enabled, so it becomes controllable from the Claude apps
@@ -12,13 +12,13 @@ import { providerFor } from "./state"
 // the same native --resume handoff the provider toggle rides. Permission mode
 // is locked to bypassPermissions: a beamed session exists to run unattended.
 
-// glm.env is KEY=value lines, parsed and never sourced — the same contract
+// Profiles are KEY=value lines, parsed and never sourced — the same contract
 // the shell shim enforces. Terminal spawns bypass the wrapper, so beam must
 // inject the provider env itself.
-function glmEnv(): Record<string, string> | null {
+function profileEnv(provider: Provider): Record<string, string> | null {
   let raw: string
   try {
-    raw = fs.readFileSync(path.join(os.homedir(), ".config", "cc-gg-bridgy", "glm.env"), "utf8")
+    raw = fs.readFileSync(envFileFor(provider), "utf8")
   } catch {
     return null
   }
@@ -51,11 +51,11 @@ export async function beam(ws: string, quietWindowMs: number): Promise<void> {
 
   const provider = providerFor(ws)
   let env: Record<string, string> | undefined
-  if (provider === "glm") {
-    env = glmEnv() ?? undefined
+  if (provider !== ANTHROPIC) {
+    env = profileEnv(provider) ?? undefined
     if (!env) {
       void vscode.window.showWarningMessage(
-        "CC-GG-bridgy: this project is on GLM but glm.env is missing — a beam now would run on Anthropic. Fix glm.env first.",
+        `CC-GG-bridgy: this project is on ${displayName(provider)} but ${provider}.env is missing — a beam now would run on Anthropic. Fix ${provider}.env first.`,
       )
       return
     }
@@ -63,7 +63,7 @@ export async function beam(ws: string, quietWindowMs: number): Promise<void> {
 
   const name = path.basename(ws)
   const terminal = vscode.window.createTerminal({
-    name: provider === "glm" ? `Beam (GLM): ${name}` : `Beam: ${name}`,
+    name: provider !== ANTHROPIC ? `Beam (${displayName(provider)}): ${name}` : `Beam: ${name}`,
     cwd: ws,
     env,
   })

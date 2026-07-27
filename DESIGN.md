@@ -1,10 +1,12 @@
 # CC-GG-bridgy — design
 
 Supervisor extension that switches the official Claude Code extension between
-Anthropic and z.ai GLM per project, gated on session idleness, with native
-session handoff. This is the engineering record — decisions, evidence, and
-live spike validation (all on macOS, Claude Code extension 2.1.220); the
-[README](README.md) covers installation and use. Decisions locked 2026-07-26.
+Anthropic and any Anthropic-compatible provider profile (z.ai GLM, Kimi Code,
+…) per project, gated on session idleness, with native session handoff. This
+is the engineering record — decisions, evidence, and live spike validation
+(all on macOS, Claude Code extension 2.1.220); the [README](README.md) covers
+installation and use. Decisions locked 2026-07-26; decision 6 added
+2026-07-27.
 
 ## Verdict
 
@@ -62,6 +64,24 @@ already exists natively.
    beam); the RC connect is explicit per beam — bridgy never flips the
    "Enable Remote Control for all sessions" config, which stays the user's
    own /config choice.
+6. **Provider model: named env profiles** (added 2026-07-27, supersedes the
+   fixed `anthropic | glm` pair — the generalization was already parked on
+   the roadmap). A provider is either the reserved `anthropic` (clean-env
+   passthrough) or the basename of `~/.config/cc-gg-bridgy/<name>.env`
+   (names restricted to `[A-Za-z0-9_-]+` — the charset the shim accepts
+   from state.json). Discovery = directory scan; the toggle is a direct
+   flip with exactly two providers and a QuickPick (with 5h usage) with
+   more; the status item shows every provider's 5h % letter-coded. Usage
+   adapters are keyed by the profile's base-URL hostname, NOT its name
+   (`*.z.ai` → GLM quota endpoint, `*.kimi.com` → Kimi Code usages
+   endpoint, anything else → "no usage adapter"), so profile naming stays
+   free. A profile whose env file is missing resolves to anthropic in BOTH
+   the shim and the extension — the status bar must never claim a provider
+   the spawn wouldn't actually get. Kimi facts behind the adapter
+   (endpoints, auth-var split, no server-side model mapping, quota schema)
+   are recorded in the project memory note `kimi-provider-feasibility`
+   (researched 2026-07-27, **not yet validated live** — no Kimi Code
+   subscription at build time).
 
 ## Architecture
 
@@ -78,7 +98,7 @@ already exists natively.
                       bin/cc-gg-wrapper (shell shim)
                         reads state.json for $PWD
                         ├─ anthropic → exec real CLI, env clean
-                        └─ glm       → source glm.env, exec real CLI
+                        └─ <name>    → parse <name>.env, exec real CLI
 ```
 
 Components:
@@ -87,7 +107,8 @@ Components:
   status-bar item, toggle command, toast flow.
 - `src/state.ts` — `state.json` read/write (`{projects: {path: provider},
   default: "anthropic"}`).
-- `src/usage.ts` — dual-provider quota readout (verified live 2026-07-26).
+- `src/usage.ts` — per-provider quota readout (GLM+Anthropic verified live
+  2026-07-26; profile adapters keyed by base-URL hostname since 0.3.0).
   **Anthropic**: read from the statusline tee
   (`~/.config/cc-gg-bridgy/statusline-last.json`, written by a fail-safe
   block in `~/.claude/statusline-command.sh` — snippet in README) →
@@ -101,11 +122,16 @@ Components:
   `GET <origin>/api/monitor/usage/quota/limit` (bare-key Authorization,
   origin derived from glm.env's base URL) → `TOKENS_LIMIT` rows: hour-unit
   (3) = the 5h cycle, week-unit (6) = weekly, `TIME_LIMIT` = monthly MCP
-  (not rendered). Fail-open everywhere — errors keep the last snapshot and
-  carry the reason into the tooltip, 429 backs off 15 min. Poll: 5 min +
-  on toggle. Status item shows the ACTIVE provider's 5h % inline; the
-  tooltip shows both providers; the warning tint means "active 5h window
-  ≥ 80%" (provider identity is text-only — the tint carries one signal).
+  (not rendered). **Kimi Code**: `GET <origin>/coding/v1/usages` (Bearer
+  key; either `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` from the
+  profile) — schema is community-documented only, two shapes observed
+  ({usage, limits[]} object vs {data[]} by model_name), so extraction is
+  defensive field-hunting and UNVERIFIED live. Fail-open everywhere —
+  errors keep the last snapshot and carry the reason into the tooltip, 429
+  backs off 15 min per provider. Poll: 5 min + on toggle. Status item
+  shows every provider's 5h % inline (letter-coded); the tooltip shows all
+  providers; the warning tint means "active 5h window ≥ 80%" (provider
+  identity is text-only — the tint carries one signal).
 - `src/busy.ts` — activity classification. Project slug = workspace path with
   every non-alphanumeric → `-` (verified against `~/.claude/projects/`
   entries). The active transcript comes from the live-session registry (cwd
@@ -137,9 +163,16 @@ Components:
   `command -v`, a regular executable file passes through, anything else falls
   back to the newest-by-mtime bundled binary
   (`~/.cursor/extensions/anthropic.claude-code-*/resources/native-binary/claude`)
-  then `command -v claude`. glm.env is parsed line-by-line (never sourced —
-  a malformed value must not execute shell). `CC_GG_BRIDGY_DEBUG=1` logs
-  argv/cwd and the chosen branch to a size-capped debug.log.
+  then `command -v claude`. Env profiles are parsed line-by-line (never
+  sourced — a malformed value must not execute shell). The provider name is
+  extracted from state.json by fixed-string key match (both quotes
+  included, so one path can never prefix-match another) + a
+  charset-restricted value capture that handles pretty-printed and compact
+  separators; a malformed project value falls through to `default`
+  (mirroring readState), anything unresolved fails closed to anthropic
+  (table-tested: pretty/compact/missing/malformed/prefix-trap/spaces).
+  `CC_GG_BRIDGY_DEBUG=1` logs argv/cwd and the chosen branch to a
+  size-capped debug.log.
 
 ## Evidence register (verified 2026-07-26 on this machine, ext 2.1.220)
 
@@ -255,6 +288,13 @@ Components:
   Anthropic. A GLM beam therefore opens a local-only terminal session
   (fail-open, still controllable at the desk); Happy-style tools are the
   only remote-reach option for the GLM leg.
+- **Kimi leg is doc-built, not live-validated.** No Kimi Code subscription
+  existed at build time (min $19/mo), so S4-style spikes (wrapper-env auth,
+  which auth var the plan endpoint honors, fresh-conversation slot
+  behavior) and the usages-endpoint response shape are open verification
+  debt. Everything Kimi-specific degrades fail-open: wrong quota schema →
+  "usage unavailable"; wrong env contract → the CLI's own auth error, never
+  a broken Claude Code.
 - **Model slot surprises under GLM.** The `/model` list reflects the mapped
   GLM names (verified live — better than the "UI still shows Claude names"
   fear), but a fresh conversation may open on the small/haiku slot rather
@@ -288,3 +328,6 @@ Components:
   on which provider, from transcript `model` fields).
 - (Quota awareness shipped 2026-07-26 as `src/usage.ts` — both providers in
   the status tooltip, active 5h % inline.)
+- (Named env profiles shipped 2026-07-27 as locked decision 6 — any
+  Anthropic-compatible endpoint via `<name>.env`, Kimi Code adapter
+  included pending live validation.)

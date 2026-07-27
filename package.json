@@ -46,6 +46,11 @@
           "type": "number",
           "default": 2500,
           "description": "Transcript must be silent this long before a session counts as idle."
+        },
+        "ccGgBridgy.switchToast": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation."
         }
       }
     }

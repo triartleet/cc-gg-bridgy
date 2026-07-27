@@ -214,6 +214,9 @@ Don't reopen the old conversation tab: it restores the stale pre-beam head.
 
 Settings: `ccGgBridgy.quietWindowMs` — how long the transcript must be
 silent before a session counts as idle (default 2500 ms).
+`ccGgBridgy.switchToast` — the post-switch notification with the
+[New conversation] shortcut (default on; turn off once the handoff flow is
+muscle memory — the status-bar label change is the confirmation).
 
 Debugging: `touch ~/.config/cc-gg-bridgy/debug-on` (or set
 `CC_GG_BRIDGY_DEBUG=1` in the spawn env) makes the shim log its

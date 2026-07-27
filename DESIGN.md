@@ -43,7 +43,10 @@ already exists natively.
    extension's own list. No resume-by-id command is contributed by the
    extension, so full automation would mean driving its webview blindly —
    rejected for v1. Terminal fallback (`claude --resume <id>` under swapped
-   env) stays available manually.
+   env) stays available manually. Amended 2026-07-27 (owner request): the
+   toast is now gated by `ccGgBridgy.switchToast` (default ON — it is the
+   only surface teaching the handoff flow to new users; the owner runs it
+   off, the status-bar label change being confirmation enough).
 4. **Scope: per-project.** State keyed by workspace folder; the shim resolves
    the project from its cwd. A scratch repo can run GLM while another project
    stays on Anthropic (Fable/Opus — the owner switches models per task via

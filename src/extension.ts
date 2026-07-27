@@ -136,6 +136,9 @@ async function toggle(): Promise<void> {
   setProvider(ws, next)
   void refreshUsage().then(refresh)
   refresh()
+  // The toast teaches the handoff flow; regulars can silence it — the
+  // status-bar label flipping is confirmation enough.
+  if (!vscode.workspace.getConfiguration("ccGgBridgy").get<boolean>("switchToast", true)) return
   const picked = await vscode.window.showInformationMessage(
     `Now on ${displayName(next)} for ${path.basename(ws)}. Start a new conversation, then resume the previous session from the Claude panel's session list to continue it there.`,
     "New conversation",

@@ -2,7 +2,7 @@
   "name": "cc-gg-bridgy",
   "displayName": "CC-GG-bridgy",
   "description": "Provider switch for the Claude Code extension: Anthropic ⇄ any Anthropic-compatible endpoint (z.ai GLM, Kimi, …) via named env profiles, per project, busy-gated — plus one-command beam of the active session to your phone via Remote Control",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "alkisyuv",
   "license": "MIT",
   "repository": {
@@ -51,6 +51,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show the post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation."
+        },
+        "ccGgBridgy.restartCliOnSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "After a provider switch, end this window's idle Claude Code CLI process so the next conversation respawns under the new provider (model list updates without a window reload). Only processes backing THIS workspace's open conversations defer; others die immediately. Queued processes die when their conversation closes (no 'exited' banner)."
         }
       }
     }

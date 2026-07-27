@@ -49,6 +49,72 @@ function liveSessionIds(projectPath: string): string[] {
   return ids
 }
 
+// The live-session registry, pid → identity: a registered pid backs an OPEN
+// conversation view somewhere; cwd says which project it belongs to.
+export interface RegisteredSession {
+  cwd: string
+  sessionId: string
+  // Epoch ms of the spawn — the tab tracker pairs tab events to sessions by
+  // comparing this against tab-open timestamps.
+  startedAt: number
+  entrypoint: string
+}
+
+export function registeredSessions(): Map<number, RegisteredSession> {
+  const dir = path.join(os.homedir(), ".claude", "sessions")
+  const sessions = new Map<number, RegisteredSession>()
+  let entries: string[]
+  try {
+    entries = fs.readdirSync(dir)
+  } catch {
+    return sessions
+  }
+  for (const name of entries) {
+    if (!name.endsWith(".json")) continue
+    try {
+      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"))
+      if (typeof rec.pid === "number" && typeof rec.cwd === "string" && rec.sessionId)
+        sessions.set(rec.pid, {
+          cwd: rec.cwd,
+          sessionId: String(rec.sessionId),
+          startedAt: typeof rec.startedAt === "number" ? rec.startedAt : 0,
+          entrypoint: typeof rec.entrypoint === "string" ? rec.entrypoint : "",
+        })
+    } catch {
+      continue
+    }
+  }
+  return sessions
+}
+
+// Pids in the live-session registry for a specific project — the set of
+// processes backing open conversation views in THIS workspace.
+export function registeredSessionPidsFor(projectPath: string): Set<number> {
+  const dir = path.join(os.homedir(), ".claude", "sessions")
+  const pids = new Set<number>()
+  const wsKey = projectPath.replace(/[^a-zA-Z0-9]/g, "-")
+  let entries: string[]
+  try {
+    entries = fs.readdirSync(dir)
+  } catch {
+    return pids
+  }
+  for (const name of entries) {
+    if (!name.endsWith(".json")) continue
+    try {
+      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"))
+      if (typeof rec.pid === "number" && rec.entrypoint === "claude-vscode") {
+        // The registry records `cwd` as the original workspace path, not the slug
+        if (rec.cwd === projectPath || rec.cwd.replace(/[^a-zA-Z0-9]/g, "-") === wsKey)
+          pids.add(rec.pid)
+      }
+    } catch {
+      continue
+    }
+  }
+  return pids
+}
+
 // Subagent/workflow activity lands in nested per-session directories, not the
 // top-level transcript — a busy signal must include them.
 function newestMtimeUnder(root: string, depth: number): number {
@@ -195,6 +261,72 @@ export function resolveActiveSession(projectPath: string): ActiveSession | null 
     live: live.includes(picked.id),
     newestActivityMs: Math.max(newestActivity, picked.mtimeMs),
   }
+}
+
+// A session is only worth reopening if its transcript exists with content —
+// reopening a mis-bound id (e.g. a warm-up spawn's) yields a blank panel
+// where a real conversation used to be.
+export function resumableSession(projectPath: string, sessionId: string): boolean {
+  try {
+    return fs.statSync(path.join(sessionDirFor(projectPath), `${sessionId}.jsonl`)).size > 0
+  } catch {
+    return false
+  }
+}
+
+// Serving model of a session's last assistant turn — the transcript is the
+// ground truth for which provider a live conversation is actually on.
+export function lastAssistantModel(projectPath: string, sessionId: string): string | null {
+  const file = path.join(sessionDirFor(projectPath), `${sessionId}.jsonl`)
+  let fd: number
+  try {
+    fd = fs.openSync(file, "r")
+  } catch {
+    return null
+  }
+  try {
+    const size = fs.fstatSync(fd).size
+    const span = Math.min(size, 256 * 1024)
+    const buf = Buffer.alloc(span)
+    fs.readSync(fd, buf, 0, span, size - span)
+    const lines = buf.toString("utf8").split("\n").filter(Boolean)
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const rec = JSON.parse(lines[i])
+        if (rec.type === "assistant" && !rec.isSidechain && typeof rec.message?.model === "string")
+          return rec.message.model
+      } catch {
+        continue
+      }
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
+// Activity of ONE session — the respawn-all flow must never close a
+// background conversation mid-turn, so each is classified individually.
+export function sessionActivityFor(
+  projectPath: string,
+  sessionId: string,
+  quietWindowMs: number,
+): SessionActivity {
+  const dir = sessionDirFor(projectPath)
+  const file = path.join(dir, `${sessionId}.jsonl`)
+  let mtimeMs: number
+  try {
+    mtimeMs = fs.statSync(file).mtimeMs
+  } catch {
+    return "no-session"
+  }
+  const newest = Math.max(mtimeMs, newestMtimeUnder(path.join(dir, sessionId), 5))
+  const age = Date.now() - newest
+  if (age < quietWindowMs) return "busy"
+  if (age > STALE_MS) return "idle"
+  return tailImpliesOpenTurn(file) ? "busy" : "idle"
 }
 
 export function classify(projectPath: string, quietWindowMs: number): SessionActivity {

@@ -238,12 +238,52 @@ silent before a session counts as idle (default 2500 ms).
 `ccGgBridgy.switchToast` — the post-switch notification with the
 [New conversation] shortcut (default on; turn off once the handoff flow is
 muscle memory — the status-bar label change is the confirmation).
+`ccGgBridgy.restartCliOnSwitch` — after a switch, end this window's idle
+Claude Code CLI process so the next conversation respawns under the new
+provider and `/model` shows its tier labels without a window reload
+(default on; the Claude extension otherwise reuses one CLI process per
+window, freezing the old provider's env until reload). Processes backing a
+still-open conversation are ended only after that conversation closes, so
+no "process exited" error ever appears in the panel. Open conversations
+move with the switch: bridgy tracks which session each Claude tab hosts
+and, on switch, closes and reopens every tracked tab on its own session —
+fresh spawns under the new provider, `/model` tiers correct immediately,
+each tab back in its original column with focus returning to the one you
+were on (tabs flicker once). A conversation that is mid-response is never
+interrupted — it keeps its old provider until you close it. Tabs bridgy
+could not identify (open since before activation, ambiguous birth) keep
+the old behavior: they move to the new provider when closed and resumed.
 
 Debugging: `touch ~/.config/cc-gg-bridgy/debug-on` (or set
 `CC_GG_BRIDGY_DEBUG=1` in the spawn env) makes the shim log its
 argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
 (size-capped). `CC_GG_BRIDGY_GLM_ENV` still overrides the glm.env path
 (back-compat from the glm-only era; other profiles have no override).
+
+## Known issues (v0.4.0)
+
+Live-validated at 10 consecutive multi-tab switches without loss; these
+remain open, roughly in priority order:
+
+- **Reopened tab order is mixed.** VS Code inserts new tabs right of the
+  active tab, and explicit post-open placement proved unsafe (it races
+  focus and can move the wrong editors) — order preservation is parked
+  until it can be done without risking tab integrity.
+- **A tab dragged to another editor group loses its tracking.** The move
+  recreates the tab identity without a new process to re-pair against;
+  the tab keeps its provider until closed and resumed. A pairwise
+  binding-transfer attempt made things worse and was reverted.
+- **The tab focused at window load starts untracked** until the project's
+  only conversation, or until you interact after another tab bound.
+- **Rare single-tab loss is not fully excluded.** Three distinct loss modes
+  were found and fixed (warm-up mis-binding, close/reopen disposal race,
+  silent reveal-of-dying-panel); one unconfirmed sighting remains. If a
+  reopen fails twice, a warning names the session — it is never silent.
+
+Next step for all of the above: build a way to TEST behaviour states
+deterministically instead of by hand — simulate registry entries, tab
+events, and switch sequences (soak tests of N consecutive switches) so
+each fix is provable and regressions are caught before a human notices.
 
 ## Limitations & caveats
 

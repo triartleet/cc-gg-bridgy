@@ -87,10 +87,25 @@ export function providerFor(projectPath: string): Provider {
 // Unique temp name per write: two windows toggling concurrently must never
 // rename each other's temp away; pretty-printed output is part of the shim's
 // parse contract (one "key": "value" pair per line).
+//
+// Race-safety: we read the file right before writing, not at toggle start,
+// so two windows toggling different projects won't clobber each other — each
+// sees and preserves the other's write. Last writer wins only when both toggle
+// the SAME project concurrently (acceptable user error).
 export function setProvider(projectPath: string, provider: Provider): void {
-  const s = readState()
-  s.projects[canonical(projectPath)] = provider
+  const key = canonical(projectPath)
   fs.mkdirSync(stateDir, { recursive: true })
+
+  // Read current state as late as possible to see concurrent writes
+  let s: BridgyState
+  try {
+    s = readState()
+  } catch {
+    s = { projects: {}, default: ANTHROPIC }
+  }
+
+  s.projects[key] = provider
+
   const tmp = `${stateFile}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(s, null, 2))
   fs.renameSync(tmp, stateFile)

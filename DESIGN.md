@@ -105,6 +105,179 @@ already exists natively.
    conversation has no provider env, so `/model` keeps Claude names by design;
    `/status` (transcript per-turn `model` field) is the ground truth. Mechanism
    recorded in the project memory note `model-picker-mechanism`.
+8. **CLI restart on switch** (added 2026-07-27, amended same day). The
+   Claude extension keeps ONE CLI process per window and reuses it across
+   conversations (verified: a single `resources/native-binary/claude` child of
+   the shared extension host, per window), so a switched profile's env — and
+   with it the `/model` tier labels — only landed after a window reload. The
+   extension exposes no restart command and watches no config that respawns
+   it, so bridgy ends that process itself after a switch: `pgrep -P <own pid>`
+   (bridgy shares the extension host, so the CLI is our sibling-child),
+   filtered to the Claude extension's install path (or a resident shim copy) so
+   language servers are never touched, then SIGTERM. The busy gate has already
+   run by then, so only idle sessions are ended — and the post-switch flow
+   already tells the user to start a new conversation, which now respawns
+   through the wrapper with the fresh env. Gated by `ccGgBridgy.restartCliOnSwitch`
+   (default ON — without it the switch silently doesn't apply to the model
+   picker until reload, the worse surprise; fail-open: pgrep errors are
+   swallowed and the old reload path still works).
+
+   First implementation (0.3.1): deferred kills for processes with any
+   live-session registry entry (= any open conversation anywhere) to avoid
+   painting "exited with code 143" banners in conversation views. Bug:
+   `registeredSessionPids()` was not filtered to the current workspace, so
+   ANY open session in ANY project deferred ALL kills — switches did nothing
+   if even one unrelated conversation was open (verified live 2026-07-27).
+
+   Second implementation (0.3.2, this commit): added
+   `registeredSessionPidsFor(projectPath)` — filters the registry to
+   entries matching `cwd == projectPath` AND `entrypoint == "claude-vscode"`.
+   Only pids backing open conversation views in THIS workspace defer the
+   kill; others die immediately. Cross-project no longer blocks the switch.
+   Deferred pids drain every 2s and are killed once their registry entry
+   disappears (conversation closed — kill invisible). Honest trade: a NEW
+   conversation spawned while a pre-switch conversation stays open *might*
+   be handed an old-env process from the pending queue (self-heals when that
+   conversation closes). Close the old conversation per the handoff flow.
+
+   Third implementation (0.3.4): the deferred kill left the MAIN case
+   broken — the ACTIVE panel's model picker mirrors its live process env,
+   so it stayed on the old provider until reload (switching tabs doesn't
+   respawn a live process; only spawn-time env counts). Fix: respawn the
+   active panel in place. Discovery (bundle dig, 2.1.220): the extension's
+   URI handler routes `/open?session=<id>` to
+   `claude-vscode.primaryEditor.open(sessionId, prompt)` and its
+   `createPanel` reveals an existing panel for that session OR creates a
+   fresh one that spawns `--resume <id>` through the wrapper — i.e. a
+   resume-by-id command EXISTS now, superseding decision 3's "none". So on
+   switch, after the kill sweep (which only defers attached pids and thus
+   can never race the fresh spawn): close the focused tab via the tabGroups
+   API and reopen the session by id — clean exit (no banner), fresh spawn,
+   new provider env, correct tier labels, no reload. Guarded to the
+   unambiguous case: focused tab IS a Claude panel (`TabInputWebview`,
+   viewType contains `claudeVSCodePanel` — the extension's own tab test)
+   AND exactly ONE registered live conversation for this project — the
+   registry cannot map panel→session, so with several open a reopen could
+   hijack the tab with the wrong session; those fall back to the deferred
+   path. Fail-open: any close/reopen error reverts to deferred kills.
+
+   Fourth implementation (0.3.5): tab ↔ session binder (`src/tabs.ts`),
+   removing the single-conversation guard for bound tabs. The extension
+   never says which session a panel hosts, but three observable signals
+   triangulate it: Claude panel tabs announce open/activate/close via the
+   tabGroups API (`TabInputWebview`, viewType contains `claudeVSCodePanel`);
+   every conversation spawn registers `~/.claude/sessions/<pid>.json`
+   (sessionId, startedAt, entrypoint) moments later — including a lazy
+   restored tab's spawn on FIRST activation; and the 2s poll pairs the two
+   queues order-preserving (both monotonic), a pairing sticking only when
+   the timestamps agree within 15s so sidebar/terminal spawns can't steal a
+   tab's binding. Bound focused tab → switch respawns THAT session
+   regardless of how many conversations are open (the main-case fix);
+   unbound tabs keep the exactly-one-live-conversation fallback. Bindings
+   die with their tab; the respawned panel re-binds itself through the same
+   open→spawn→pair cycle. Also exports `activeBoundSessionId()` — a truer
+   "active session" than newest-transcript-mtime, wired into beam as a
+   next step.
+
+   Fifth implementation (0.3.6): respawn-all. A switch now moves EVERY
+   bound panel to the new provider, not just the focused one — each is
+   closed and reopened by session id in its original column
+   (`claude-vscode.editor.open(sessionId, prompt, viewColumn)` — verified
+   signature; passing a non-Active column also sets the extension's
+   preferred location to "panel", which matches the editor-tab workflow).
+   Columns are captured before the first close (closing renumbers groups),
+   the focused panel is respawned LAST so focus returns to it, and each
+   session is busy-checked individually first (`sessionActivityFor`) — a
+   background conversation mid-turn is never chopped; it keeps its old
+   provider until closed, via the deferred-kill path. Unbound tabs keep
+   the previous fallbacks unchanged.
+
+   Sixth implementation (0.3.7): vanish-proofing the respawn. Live use
+   showed 1–2 tabs missing after some switches — a close/reopen race:
+   `createPanel` reveals (and throws on) the dying panel until its disposal
+   is fully processed, and the loop's swallowed catch turned any hiccup
+   into a silently closed-never-reopened tab; stale Tab snapshots after
+   group renumbering could likewise make close() throw silently. Fixes:
+   re-resolve each tab from the bindings at use time; treat close-failure
+   as "tab untouched, skip"; after a successful close, wait for the
+   session's registry entry to disappear (or its pid to die) before
+   reopening — proof the extension finished the disposal; retry the reopen
+   once after 500ms; and if it STILL fails, show a warning naming the
+   session instead of vanishing it. No silent failure paths remain in the
+   respawn loop.
+
+   Seventh implementation (0.3.8), from live multi-switch testing:
+   (a) Lost-tab root cause found — the panel-open flow fires short-lived
+   WARM-UP spawns that also register in the live-session registry, so the
+   tracker could bind a tab to a warm-up's session id; respawning then
+   reopened an id with no transcript → blank "Untitled" panel where a real
+   conversation was. Two-layer fix: pairing now requires the candidate's
+   pid to still be ALIVE at drain time (warm-ups exit within seconds), and
+   respawn refuses to close any tab whose bound session lacks transcript
+   content (`resumableSession`). (b) Tab-row churn: the close/reopen loop
+   is now three-phase — close all, await all deregistrations in parallel,
+   reopen all — one row rebuild instead of one per tab. (c) Status-bar
+   truth: the item shows the TOGGLE (next conversation) and now also
+   "tab on <provider>" whenever the focused tab's transcript (last
+   assistant turn's `model`, mapped through the profiles' *_MODEL values)
+   disagrees — the tooltip explains the tab moves on its next respawn.
+
+   Eighth implementation (0.3.9), polish on a working baseline (deliberately
+   surgical): (a) In-group order preserved — each tab's index is captured
+   with its column, reopens run in original (column, index) order (appends
+   then reproduce the sequence), and focus is restored afterwards by
+   re-opening the previously active session — which rides the extension's
+   own reveal short-circuit for existing panels, creating nothing. (b)
+   Cross-group MOVES no longer orphan a binding: a move arrives as a paired
+   close+open inside one tabGroups event while spawning no new process (so
+   a deleted binding could never re-pair); the handler now detects the pair
+   and transfers bindings closed[i]→opened[i]. Real closes and real new
+   tabs never pair, so those paths are untouched.
+
+   Ninth implementation (0.3.10) — both 0.3.9 attempts corrected against
+   live evidence. (a) The move-transfer is REVERTED: pairwise
+   closed[i]→opened[i] mis-bound tabs in practice and made respawn bounce
+   panels between groups; moved tabs are now deliberately unbound again
+   (they keep their provider until closed and resumed — documented
+   limitation, safe direction). (b) Reopen-order-by-index couldn't work:
+   VS Code inserts new tabs to the RIGHT OF THE ACTIVE tab, not at the
+   group end, so append order never determined final order. Replaced with
+   explicit placement: after each reopen, while the new panel is still the
+   active editor, `moveActiveEditor {to: "position", by: "tab", value:
+   originalIndex+1}` puts it in its original slot — purely cosmetic, any
+   failure is swallowed and changes nothing about the respawn itself.
+
+   Tenth implementation (0.3.11) — 0.3.10's placement REVERTED after it
+   reintroduced tab loss: `moveActiveEditor` races focus (the reopened
+   panel is not reliably the active editor yet when the command fires), so
+   it moved WRONG editors, including across groups where webview Tab
+   objects get recreated and downstream references go stale. Lesson locked
+   in as a comment at the site: mixed reopen order is the accepted cost —
+   never trade tab integrity for cosmetics. The respawn loop is back to
+   the exact 0.3.8-validated shape (open → retry → loud warning).
+
+   Eleventh implementation (0.3.12) — the baseline's own rare loss mode
+   found (a tab lost on the 4th consecutive switch, no warning shown): an
+   `editor.open` can "succeed" as a silent no-op. The extension's
+   session→panel map can outlive the dead CLI process by a beat, so
+   createPanel finds the DYING panel and reveals it without throwing —
+   return value clean, retry skipped, panel finishes dying, tab gone.
+   Fix: `openSessionPanel` no longer trusts the command — it counts Claude
+   panels before the call and reports success only when a panel verifiably
+   materialized (up to 1s watch); otherwise the caller's 500ms-delayed
+   retry runs, by which time the disposal has certainly been processed.
+   Materialization, not absence-of-exception, is the success criterion.
+
+   Released as 0.4.0 after 10 consecutive live multi-tab switches without
+   loss. Open issues at release: mixed reopen order (parked — placement
+   races focus, integrity beats cosmetics), moved-tab unbinding (parked —
+   transfer heuristic reverted), boot-tab unbound until first pairing, and
+   one unconfirmed single-loss sighting. NEXT TASK for this epic: a test
+   harness for behaviour STATES — simulated live-session registry entries,
+   scripted tab events, and N-switch soak runs — so every loss mode
+   becomes a reproducible case instead of a tired-human observation. The
+   eleven-iteration history above is the motivation: each fix was correct
+   but only live use could falsify it.
 
 ## Architecture
 

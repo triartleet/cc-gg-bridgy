@@ -1,18 +1,19 @@
 {
-  "packVersion": "1",
+  "packVersion": "2",
   "etymdVersion": "0.0.1",
-  "approvedAt": "2026-07-26T19:45:04.855Z",
+  "approvedAt": "2026-07-28T05:17:15.884Z",
   "profile": "solo",
   "facts": {
     "etymdVersion": "0.0.1",
-    "packVersion": "1",
-    "generatedAt": "2026-07-26T19:45:04.835Z",
-    "root": "/Users/user/projects/cc-gg-bridgy",
+    "packVersion": "2",
+    "generatedAt": "2026-07-28T05:17:15.882Z",
+    "root": ".",
     "name": "cc-gg-bridgy",
     "git": {
       "isRepo": true,
-      "branch": "main",
-      "head": "17fb96b",
+      "branch": "provider-profiles",
+      "head": "9c951ca",
+      "hooksPath": ".githooks",
       "husky": false,
       "recentAuthors": 1
     },
@@ -37,9 +38,10 @@
       "files": []
     },
     "hooks": {
-      "source": "none",
-      "preCommit": false,
-      "prePush": false,
+      "source": "githooks",
+      "dir": ".githooks",
+      "preCommit": true,
+      "prePush": true,
       "commitMsg": false,
       "lintStaged": false
     },
@@ -49,7 +51,7 @@
         "label": "AGENTS.md (operating contract)",
         "path": "AGENTS.md",
         "kind": "contract",
-        "exists": false
+        "exists": true
       },
       {
         "id": "project-context",
@@ -140,7 +142,7 @@
         "label": "Tracked git hooks (.githooks)",
         "path": ".githooks",
         "kind": "gate",
-        "exists": false
+        "exists": true
       },
       {
         "id": "inventory",
@@ -154,7 +156,11 @@
       "dirs": [
         {
           "name": "src",
-          "files": 5
+          "files": 6
+        },
+        {
+          "name": ".githooks",
+          "files": 2
         },
         {
           "name": ".vscode",

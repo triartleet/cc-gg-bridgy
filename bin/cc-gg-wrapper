@@ -69,6 +69,36 @@ load_env_file() {
   done <"$1"
 }
 
+# The reference tier-label mapping is glm.env. A provider env that omits the
+# ANTHROPIC_DEFAULT_*_MODEL tiers inherits them from glm.env so /model shows
+# real names instead of falling through to built-in Anthropic ids. Only TIER
+# vars are inherited — NEVER BASE_URL / AUTH_TOKEN (those stay the provider's
+# own), and a var the provider DID set always wins.
+GLM_ENV="${CONFIG_DIR}/glm.env"
+glm_value() {
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+    "$1="*) printf '%s\n' "${line#"$1="}"; return ;;
+    esac
+  done <"$GLM_ENV"
+}
+inject_tier_fallback() {
+  [ -f "$GLM_ENV" ] || return 0
+  for var in ANTHROPIC_DEFAULT_FABLE_MODEL ANTHROPIC_DEFAULT_FABLE_MODEL_NAME \
+             ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL_NAME \
+             ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL_NAME \
+             ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME; do
+    eval "cur=\${$var:-}"
+    if [ -z "$cur" ]; then
+      val="$(glm_value "$var")"
+      if [ -n "$val" ]; then
+        export "$var=$val"
+        debug "tier fallback $var=$val (from glm.env)"
+      fi
+    fi
+  done
+}
+
 # Real CLI when argv doesn't carry one: newest (by mtime) bundled binary from
 # any installed Claude extension, else the system claude.
 find_cli() {

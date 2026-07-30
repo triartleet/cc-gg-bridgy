@@ -1,6 +1,8 @@
+import { execFile } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import { promisify } from "node:util"
 import { ANTHROPIC, envFileFor, listProviders, Provider } from "./state"
 
 // Usage is polled per discovered provider: Anthropic from the statusline tee,
@@ -16,6 +18,14 @@ export interface ProviderUsage {
   weekly: WindowUsage | null
   note?: string
   error?: string
+  // True when the numbers come from a feed that can lag far behind real use.
+  // Today only the Anthropic statusline tee (terminal-only) sets this; the
+  // renderer must never pass a stale snapshot off as live, nor tint the bar
+  // warning-red on one.
+  stale?: boolean
+  // Epoch-ms the underlying feed was last written — fuels an "how stale?"
+  // age readout (Anthropic tee mtime). Undefined for live-fetched profiles.
+  asOfMs?: number
 }
 
 export interface UsageSnapshot {
@@ -29,8 +39,37 @@ const BACKOFF_MS = 15 * 60 * 1000
 // beyond this age the numbers get an "as of" note instead of reading current.
 const FEED_FRESH_MS = 30 * 60 * 1000
 
+// Live Anthropic usage (opt-in). Claude Code stores its OAuth credentials in
+// the macOS Keychain under this service as a JSON blob {claudeAiOauth:{...}}.
+// The persisted access token is usually EXPIRED (Claude Code refreshes in
+// memory), so we refresh it ourselves — safe because the refresh_token is
+// reusable, not rotated (Claude Code's own code consumes only access_token
+// from the response and never stores a new refresh_token, yet stays logged in
+// across days of refreshes). Recipe verified from the Claude Code 2.1.220
+// bundle: token endpoint + client_id + the /api/oauth/usage field names, which
+// match the statusline payload (five_hour/seven_day used_percentage/resets_at).
+const KEYCHAIN_SERVICE = "Claude Code-credentials"
+const CLAUDE_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+const CLAUDE_TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
+const CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+const KEYCHAIN_TIMEOUT_MS = 8000
+const TOKEN_SKEW_MS = 60_000
+const execFileP = promisify(execFile)
+// In-memory cache of a refreshed access token so we don't mint one every poll.
+let claudeToken: { accessToken: string; expiresAt: number } | null = null
+// Terse opt-in diagnostics: fetchAnthropicUsageLive (and its helpers) only run
+// when ccGgBridgy.anthropicLiveUsage is on, so these logs are auto-gated to
+// that opt-in. FAILURE-only — never log on success, or it spams every poll.
+const dbg = (...a: unknown[]): void => console.warn("[cc-gg-bridgy:anthropic-live]", ...a)
+
 const nextAllowed: Record<Provider, number> = {}
 let snapshot: UsageSnapshot = { providers: {}, fetchedAt: 0 }
+// Set when the OAuth refresh token is expired (invalid_grant) — the live path
+// can't recover without an interactive login, so extension.ts surfaces a prompt.
+let anthropicLoginNeeded = false
+export function isAnthropicLoginNeeded(): boolean {
+  return anthropicLoginNeeded
+}
 
 export function currentUsage(): UsageSnapshot {
   return snapshot
@@ -78,12 +117,155 @@ function fetchAnthropicUsage(): ProviderUsage {
   const weekly = win(rl?.seven_day)
   if (!fiveHour && !weekly)
     return unavailable("statusline feed has no rate_limits yet — run a terminal claude turn")
-  const stale = mtimeMs && Date.now() - mtimeMs > FEED_FRESH_MS
-  return {
-    fiveHour,
-    weekly,
-    note: stale ? `as of ${formatReset(mtimeMs)}` : undefined,
+  // The statusline runs only in terminal sessions, so the file can sit
+  // unchanged for hours while panel conversations burn through the window.
+  // Flag staleness (and carry the feed's mtime) so the readout shows the AGE
+  // of the snapshot instead of silently freezing on one confident number.
+  const stale = !mtimeMs || Date.now() - mtimeMs > FEED_FRESH_MS
+  return { fiveHour, weekly, stale, asOfMs: mtimeMs || undefined }
+}
+
+// Read Claude Code's stored OAuth credentials from the macOS Keychain. Best
+// effort + bounded so a Keychain prompt can never stall the usage poll: any
+// failure (denied, no item, unparseable) returns null and the caller falls
+// back to the statusline tee. The secret stays in-process — never logged.
+async function readClaudeCredentials(): Promise<{ refreshToken: string } | null> {
+  let stdout: string
+  try {
+    const r = await execFileP(
+      "security",
+      ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
+      { timeout: KEYCHAIN_TIMEOUT_MS, maxBuffer: 1 << 20 },
+    )
+    stdout = r.stdout
+  } catch (e: any) {
+    dbg("keychain read failed:", String(e?.message ?? e).slice(0, 120))
+    return null
   }
+  try {
+    const oauth = JSON.parse(stdout.trim())?.claudeAiOauth
+    if (typeof oauth?.refreshToken !== "string") {
+      dbg("keychain blob has no claudeAiOauth.refreshToken")
+      return null
+    }
+    return { refreshToken: oauth.refreshToken }
+  } catch {
+    dbg("keychain blob unparseable")
+    return null
+  }
+}
+
+// Mint a fresh access token from the reusable refresh token. On any failure
+// (network, 4xx, unexpected shape) returns null — the caller falls back. We
+// do NOT persist the new token: Claude Code owns the credential store, and
+// since the refresh_token isn't rotated, refreshing here can't log it out.
+async function refreshClaudeToken(refreshToken: string): Promise<{ accessToken: string; expiresAt: number } | null> {
+  let res: Response
+  try {
+    res = await fetch(CLAUDE_TOKEN_URL, {
+      method: "POST",
+      // Mirror Claude Code's own refresh request: the token endpoint 400s
+      // without the OAuth beta header (verified against the 2.1.220 bundle).
+      headers: {
+        "Content-Type": "application/json",
+        "anthropic-beta": "oauth-2025-04-20",
+        "User-Agent": "anthropic-sdk-typescript userOAuthProvider",
+      },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: CLAUDE_CLIENT_ID,
+      }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+  } catch (e: any) {
+    dbg("token refresh network error:", String(e?.message ?? e).slice(0, 120))
+    return null
+  }
+  if (!res.ok) {
+    let detail = ""
+    try {
+      detail = (await res.text()).slice(0, 200)
+    } catch {
+      /* keep empty */
+    }
+    // invalid_grant = the refresh token itself is expired; no amount of
+    // retrying helps until an interactive login mints a new one.
+    if (res.status === 400 && detail.includes("invalid_grant")) anthropicLoginNeeded = true
+    dbg(`token refresh failed: HTTP ${res.status} ${detail}`)
+    return null
+  }
+  let body: any
+  try {
+    body = await res.json()
+  } catch {
+    dbg("token refresh response unparseable")
+    return null
+  }
+  if (typeof body?.access_token !== "string") {
+    dbg("token refresh response has no access_token:", Object.keys(body ?? {}).join(","))
+    return null
+  }
+  // A successful refresh means the refresh token is alive again.
+  anthropicLoginNeeded = false
+  const expiresIn = typeof body.expires_in === "number" && body.expires_in > 0 ? body.expires_in : 3600
+  return { accessToken: body.access_token, expiresAt: Date.now() + expiresIn * 1000 }
+}
+
+// Live Anthropic usage via the OAuth-refreshed token. Returns null on ANY miss
+// so refreshUsage falls back to the (honest-staled) statusline tee — this path
+// never makes the readout worse, only fresher when it succeeds. The response
+// uses the same rate_limits shape as the statusline payload.
+async function fetchAnthropicUsageLive(): Promise<ProviderUsage | null> {
+  const cred = await readClaudeCredentials()
+  if (!cred) return null
+  if (!claudeToken || claudeToken.expiresAt <= Date.now() + TOKEN_SKEW_MS) {
+    const t = await refreshClaudeToken(cred.refreshToken)
+    if (!t) {
+      claudeToken = null
+      return null
+    }
+    claudeToken = t
+  }
+  let res: Response
+  try {
+    res = await fetch(CLAUDE_USAGE_URL, {
+      headers: { Authorization: `Bearer ${claudeToken.accessToken}` },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+  } catch {
+    return null
+  }
+  // 401 = our token didn't land (e.g. just-rotated server-side); drop the cache
+  // so the next poll re-refreshes, and fall back now.
+  if (res.status === 401) {
+    dbg("usage GET 401 — dropping cached token, will re-refresh next poll")
+    claudeToken = null
+    return null
+  }
+  if (!res.ok) {
+    dbg(`usage GET failed: HTTP ${res.status}`)
+    return null
+  }
+  let body: any
+  try {
+    body = await res.json()
+  } catch {
+    dbg("usage response unparseable")
+    return null
+  }
+  const rl = body?.rate_limits ?? body?.data?.rate_limits ?? body?.data ?? body
+  const win = (w: any): WindowUsage | null =>
+    typeof w?.used_percentage === "number"
+      ? { pct: w.used_percentage, resetMs: w.resets_at ? w.resets_at * 1000 : null }
+      : null
+  const fiveHour = win(rl?.five_hour)
+  const weekly = win(rl?.seven_day)
+  if (!fiveHour && !weekly) {
+    dbg("usage response had no five_hour/seven_day — top-level keys:", Object.keys(body ?? {}).join(","))
+    return null
+  }
+  return { fiveHour, weekly, stale: false }
 }
 
 // Profiles are KEY=value lines (the shim's parse contract). The auth token
@@ -246,13 +428,26 @@ function merge(prev: ProviderUsage | null, fresh: ProviderUsage): ProviderUsage 
   return prev ? { ...prev, error: fresh.error } : fresh
 }
 
-export async function refreshUsage(): Promise<UsageSnapshot> {
+export async function refreshUsage(opts: { liveAnthropic?: boolean } = {}): Promise<UsageSnapshot> {
   const now = Date.now()
   const providers: Record<Provider, ProviderUsage | null> = {}
   await Promise.all(
     listProviders().map(async (p) => {
       const prev = snapshot.providers[p] ?? null
       if (p === ANTHROPIC) {
+        // Opt-in live read first; on any miss fall back to the statusline tee
+        // (which carries an honest staleness flag). Live data is authoritative.
+        if (opts.liveAnthropic) {
+          try {
+            const live = await fetchAnthropicUsageLive()
+            if (live) {
+              providers[p] = live
+              return
+            }
+          } catch {
+            /* fall through to the tee */
+          }
+        }
         let a: ProviderUsage
         try {
           a = fetchAnthropicUsage()

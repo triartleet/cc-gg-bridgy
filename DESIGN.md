@@ -313,8 +313,11 @@ Components:
   401'd live: the Keychain access-token copy rots on this machine, and
   refreshing it ourselves would touch auth flows (non-goal). Limitation:
   only TERMINAL sessions run statusline scripts (the extension UI does
-  not, verified), and `rate_limits` appears only after a real turn — the
-  tooltip shows an "as of" note past 30 min. **z.ai**:
+  not, verified), and `rate_limits` appears only after a real turn. So the
+  readout never pretends a stale feed is live: past 30 min the snapshot is
+  flagged `stale` — the status bar shows its AGE inline (`A 2% (8h)`), the
+  tooltip says why (terminal-fed) and when it was last refreshed, and the
+  warning tint is suppressed on stale data. **z.ai**:
   `GET <origin>/api/monitor/usage/quota/limit` (bare-key Authorization,
   origin derived from glm.env's base URL) → `TOKENS_LIMIT` rows: hour-unit
   (3) = the 5h cycle, week-unit (6) = weekly, `TIME_LIMIT` = monthly MCP
@@ -369,6 +372,12 @@ Components:
   (table-tested: pretty/compact/missing/malformed/prefix-trap/spaces).
   `CC_GG_BRIDGY_DEBUG=1` logs argv/cwd and the chosen branch to a
   size-capped debug.log.
+  **Tier-label fallback** (added 2026-07-30): after loading a provider's env,
+  any of the 8 `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU,FABLE}_MODEL[_NAME]` vars
+  the profile left UNSET are filled from `glm.env` (the reference mapping) so
+  `/model` shows real names instead of built-in Anthropic ids. Connection vars
+  (`ANTHROPIC_BASE_URL`/`AUTH_TOKEN`) are NEVER inherited, and a profile that
+  sets its own tiers (e.g. kimi.env) is untouched.
 
 ## Evidence register (verified 2026-07-26 on this machine, ext 2.1.220)
 
@@ -525,6 +534,23 @@ Components:
 - Never proxy or intercept provider traffic; never touch OAuth flows. Both
   providers are consumed exactly as their subscriptions intend (Anthropic
   first-party; z.ai's own Anthropic-compatible Coding Plan endpoint).
+  - **Scoped exception — live Anthropic usage (opt-in `ccGgBridgy.anthropicLiveUsage`,
+    off by default):** the statusline feed is terminal-only, so a panel-only user
+    sees stale usage. When enabled, bridgy reads Claude Code's *own* OAuth
+    credential from the macOS Keychain, performs a `refresh_token` grant against
+    `platform.claude.com/v1/oauth/token` (Claude Code's public client_id), and
+    GETs `api.anthropic.com/api/oauth/usage` — the same endpoint + fields Claude
+    Code itself uses. It does NOT proxy/intercept traffic, does NOT persist or
+    rotate credentials (the refresh_token is reusable, verified non-rotating from
+    CC 2.1.220's own code), and fails open to the staled statusline feed on any
+    miss. Decided 2026-07-29 after confirming read-only token use 401s (the
+    persisted access token is expired).
+  - **Re-login is DELEGATED, not reimplemented** (2026-07-30): when the refresh
+    token expires (`invalid_grant`), bridgy does NOT run its own OAuth authorize
+    flow — the `cc-gg-bridgy.loginAnthropic` command (auto-prompted once per
+    expiry) opens a terminal running `claude login` directly (bypassing the
+    wrapper), and Claude Code mints + stores the fresh credential. bridgy writes
+    no credentials, ever; the refresh path reads + refreshes only.
 - No second chat UI. The official extension remains the only conversation
   surface.
 

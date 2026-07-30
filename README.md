@@ -45,9 +45,16 @@ Validated live against Claude Code extension 2.1.220 (see
   Anthropic-compatible endpoint works (unknown endpoints just show no usage
   numbers).
 - **Multi-provider usage readout** — the status item shows every provider's
-  5-hour window inline (`C 28% · G 1% · K 7%`); the tooltip adds the weekly
-  windows, reset times, and plan tiers. The item takes the warning tint when
-  the active provider's 5-hour window passes 80%.
+  5-hour **and weekly** windows plus the next 5-hour reset, inline
+  (`⇄ Claude │ C 28%/82% ↻14:00 · G 1%/40% ↻15:30`). The tooltip adds plan
+  tiers and reset times. The item takes the warning tint when the active
+  provider's 5-hour window passes 80%.
+- **Live Anthropic usage (opt-in)** — the Claude column can read usage
+  directly instead of waiting on the terminal statusline. Enable
+  `ccGgBridgy.anthropicLiveUsage` and bridgy refreshes Claude Code's OAuth
+  token from the macOS Keychain and polls the usage endpoint itself, so the
+  bar stays fresh in the panel too. macOS only; fails open to the statusline
+  feed on any miss. When the session expires it prompts a one-click re-login.
 - **Busy gate** — switching is gated while a response looks in-flight, so a
   toggle can't corrupt an open turn; a forced switch asks for confirmation.
 - **Native session handoff** — transcripts are provider-agnostic and shared,
@@ -127,9 +134,16 @@ Validated live against Claude Code extension 2.1.220 (see
   URL's hostname: z.ai profiles query the GLM Coding Plan quota endpoint,
   kimi.com profiles query the Kimi Code usage endpoint (community-documented
   — parsed defensively, degrades to "usage unavailable" on surprises), other
-  endpoints show no numbers. The Claude side reads the `rate_limits` payload
-  Claude Code itself hands to statusline scripts, teed to a file (see setup
-  step 3) — no credential handling at all.
+  endpoints show no numbers. The Claude side defaults to the `rate_limits`
+  payload Claude Code hands to statusline scripts, teed to a file (see setup
+  step 3) — no credential handling. With `ccGgBridgy.anthropicLiveUsage` on,
+  the Claude side instead refreshes the OAuth token from the Keychain and
+  polls the usage endpoint directly (panel-fresh; see below).
+- **Tier-label fallback** — a provider profile that omits the
+  `ANTHROPIC_DEFAULT_<TIER>_MODEL[_NAME]` vars inherits them from `glm.env`
+  (the reference mapping) so `/model` shows real names instead of falling
+  through to built-in Anthropic ids. Connection vars are never inherited, and
+  a profile that sets its own tiers (like `kimi.env`) is untouched.
 
 ## Install
 
@@ -186,6 +200,15 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
 
    Without this, the Claude column shows why it's unavailable; everything
    else works.
+4. **(Optional) Live Claude usage in the panel.** The statusline feed only
+   updates from terminal sessions, so panel-only use shows a staleness age
+   instead of a frozen number. To poll usage directly, set
+   **`ccGgBridgy.anthropicLiveUsage: true`** (macOS only). Bridgy reads the
+   Claude Code OAuth credential from the Keychain, refreshes the access token
+   itself, and queries the usage endpoint — no credential handling of yours.
+   When the refresh token eventually expires it prompts a one-click re-login
+   (or run **`CC-GG-bridgy: Re-login Anthropic`**), which runs `claude login`
+   and stores a fresh token bridgy then reads.
 
 ## Using it
 
@@ -254,13 +277,20 @@ interrupted — it keeps its old provider until you close it. Tabs bridgy
 could not identify (open since before activation, ambiguous birth) keep
 the old behavior: they move to the new provider when closed and resumed.
 
+`ccGgBridgy.anthropicLiveUsage` — poll live Claude usage directly from the
+usage endpoint instead of the terminal statusline feed (default off; macOS
+only). On any miss it falls back to the statusline feed, shown with a
+staleness age. When the OAuth refresh token expires, run
+**`CC-GG-bridgy: Re-login Anthropic`** (auto-prompted once per expiry) to
+mint a fresh one via `claude login`.
+
 Debugging: `touch ~/.config/cc-gg-bridgy/debug-on` (or set
 `CC_GG_BRIDGY_DEBUG=1` in the spawn env) makes the shim log its
 argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
 (size-capped). `CC_GG_BRIDGY_GLM_ENV` still overrides the glm.env path
 (back-compat from the glm-only era; other profiles have no override).
 
-## Known issues (v0.4.0)
+## Known issues
 
 Live-validated at 10 consecutive multi-tab switches without loss; these
 remain open, roughly in priority order:

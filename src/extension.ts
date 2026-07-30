@@ -31,7 +31,7 @@ import {
   setProvider,
   stateDir,
 } from "./state"
-import { currentUsage, formatReset, ProviderUsage, refreshUsage } from "./usage"
+import { currentUsage, formatReset, isAnthropicLoginNeeded, ProviderUsage, refreshUsage } from "./usage"
 
 const POLL_MS = 2000
 const USAGE_POLL_MS = 5 * 60 * 1000
@@ -49,13 +49,77 @@ function quietWindowMs(): number {
   return vscode.workspace.getConfiguration("ccGgBridgy").get<number>("quietWindowMs", 2500)
 }
 
+// Live Anthropic usage is opt-in (off by default for the public build): it
+// reads the Claude Code OAuth token from the Keychain. The flag is read fresh
+// each poll so toggling the setting takes effect within one usage cycle.
+function refreshUsageNow(): ReturnType<typeof refreshUsage> {
+  return refreshUsage({
+    liveAnthropic: vscode.workspace
+      .getConfiguration("ccGgBridgy")
+      .get<boolean>("anthropicLiveUsage", false),
+  })
+}
+
+const loginTerms = new Set<vscode.Terminal>()
+let loginPromptShown = false
+
+function onUsageRefreshed(): void {
+  refresh()
+  maybePromptLogin()
+}
+
+// When the OAuth refresh token is expired the live read can't self-recover —
+// prompt once per expiry to run Claude Code's own login (which mints a fresh
+// refresh token into the Keychain). The flag clears on a successful refresh,
+// so the next expiry re-prompts.
+function maybePromptLogin(): void {
+  if (!isAnthropicLoginNeeded()) {
+    loginPromptShown = false
+    return
+  }
+  if (loginPromptShown) return
+  loginPromptShown = true
+  void vscode.window
+    .showInformationMessage(
+      "CC-GG-bridgy: Anthropic session expired — re-login to keep usage live.",
+      "Run claude login",
+    )
+    .then((pick) => {
+      if (pick === "Run claude login") void loginAnthropic()
+    })
+}
+
+// Delegate to Claude Code's own login: run `claude` directly in a terminal
+// (bypasses the wrapper), let CC drive its login flow, and it stores the fresh
+// credential in the Keychain where bridgy reads it. No OAuth code in bridgy,
+// no Keychain writes from bridgy.
+async function loginAnthropic(): Promise<void> {
+  const term = vscode.window.createTerminal("CC-GG-bridgy: Claude login")
+  loginTerms.add(term)
+  term.show()
+  term.sendText("claude login", true)
+}
+
+// Compact "how long ago" for inline staleness (8h, 45m, 3d). Used only on
+// stale terminal-fed snapshots so the bar shows their AGE, not a frozen live %.
+function compactAge(ageMs: number): string {
+  const mins = Math.round(ageMs / 60000)
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h`
+  return `${Math.round(hrs / 24)}d`
+}
+
 function usageLine(name: string, u: ProviderUsage | null, weeklyLabel: string): string {
   if (!u || (!u.fiveHour && !u.weekly))
     return `**${name}** — usage unavailable${u?.error ? ` (${u.error})` : ""}`
   const part = (label: string, w: { pct: number; resetMs: number | null } | null): string =>
     w ? `${label} ${Math.round(w.pct)}%${w.resetMs ? ` (↻ ${formatReset(w.resetMs)})` : ""}` : ""
   const tier = u.note ? ` _(${u.note})_` : ""
-  return [`**${name}**${tier}`, part("5h", u.fiveHour), part(weeklyLabel, u.weekly)]
+  const staleTag = u.stale
+    ? ` _(stale${u.asOfMs ? ` · refreshed ${formatReset(u.asOfMs)}` : ""})_`
+    : ""
+  return [`**${name}**${tier}${staleTag}`, part("5h", u.fiveHour), part(weeklyLabel, u.weekly)]
     .filter(Boolean)
     .join(" · ")
 }
@@ -89,16 +153,34 @@ function render(ws: string, provider: Provider, activity: SessionActivity): void
   const usage = currentUsage()
   const providers = listProviders()
   const active = usage.providers[provider] ?? null
+  const anyStale = providers.some((p) => usage.providers[p]?.stale)
+  // Per provider: "A 2%/82%↻14:00" — 5h then weekly (slash), then the 5h
+  // window's next reset (↻HH:MM). Distinct separators keep identity separate
+  // from metrics: "│" name↔usage, "·" between providers, "/" between windows,
+  // "↻" the reset. Stale snapshots show "(age)" instead of a reset (a reset
+  // off a stale snapshot isn't trustworthy) — the two suffixes are exclusive,
+  // which is what keeps each token compact as providers are added.
   const inline = providers.flatMap((p) => {
     const u = usage.providers[p]
-    return u?.fiveHour ? [`${letterFor(p)} ${Math.round(u.fiveHour.pct)}%`] : []
+    if (!u || (!u.fiveHour && !u.weekly)) return []
+    const nums = [u.fiveHour, u.weekly]
+      .filter((w): w is { pct: number; resetMs: number | null } => !!w)
+      .map((w) => `${Math.round(w.pct)}%`)
+    const suffix = u.stale && u.asOfMs
+      ? ` (${compactAge(Date.now() - u.asOfMs)})`
+      : u.fiveHour?.resetMs
+        ? ` ↻${formatReset(u.fiveHour.resetMs)}`
+        : ""
+    return [`${letterFor(p)} ${nums.join("/")}${suffix}`]
   })
   const tabProvider = activeTabProvider(ws)
-  statusItem.text = [
+  const header = [
     `${icon} ${label}`,
     ...(tabProvider && tabProvider !== provider ? [`tab on ${displayName(tabProvider)}`] : []),
-    ...inline,
-  ].join(" · ")
+  ]
+  statusItem.text = inline.length
+    ? `${header.join(" · ")}  │  ${inline.join(" · ")}`
+    : header.join(" · ")
   statusItem.tooltip = new vscode.MarkdownString(
     [
       `**CC-GG-bridgy** — next Claude Code session runs on **${label}**`,
@@ -113,6 +195,12 @@ function render(ws: string, provider: Provider, activity: SessionActivity): void
         usageLine(displayName(p), usage.providers[p] ?? null, p === ANTHROPIC ? "7d" : "wk"),
         "",
       ]),
+      ...(anyStale
+        ? [
+            "ℹ Anthropic usage is read from the terminal statusline and only refreshes when you run a `claude` turn in a terminal — not from this panel. The `(age)` next to a % is how stale that snapshot is.",
+            "",
+          ]
+        : []),
       activity === "busy"
         ? "Session activity detected — switching is gated until the answer lands."
         : activity === "no-session"
@@ -122,8 +210,9 @@ function render(ws: string, provider: Provider, activity: SessionActivity): void
   )
   // The warning tint means "active provider's 5h window is nearly spent" —
   // provider identity stays text-only so the color can carry that one signal.
+  // Never tint on a STALE snapshot: a frozen old % must not lock the bar red.
   statusItem.backgroundColor =
-    active?.fiveHour && active.fiveHour.pct >= USAGE_WARN_PCT
+    active?.fiveHour && active.fiveHour.pct >= USAGE_WARN_PCT && !active.stale
       ? new vscode.ThemeColor("statusBarItem.warningBackground")
       : undefined
   statusItem.show()
@@ -152,7 +241,9 @@ async function pickProvider(
     const u = usage.providers[p]
     return {
       label: `${p === current ? "$(check) " : ""}${displayName(p)}`,
-      description: u?.fiveHour ? `5h ${Math.round(u.fiveHour.pct)}%` : "usage —",
+      description: u?.fiveHour
+        ? `5h ${Math.round(u.fiveHour.pct)}%${u.stale && u.asOfMs ? ` · ${compactAge(Date.now() - u.asOfMs)} stale` : ""}`
+        : "usage —",
       provider: p,
     }
   })
@@ -380,7 +471,7 @@ async function toggle(): Promise<void> {
     restartClaudeCli(ws)
     void respawnBoundPanels(ws)
   }
-  void refreshUsage().then(refresh)
+  void refreshUsageNow().then(onUsageRefreshed)
   refresh()
   // The toast teaches the handoff flow; regulars can silence it — the
   // status-bar label flipping is confirmation enough.
@@ -449,9 +540,16 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       void beam(ws, quietWindowMs())
     }),
+    vscode.commands.registerCommand("cc-gg-bridgy.loginAnthropic", () => loginAnthropic()),
+    // When a bridgy-spawned login terminal closes, Claude Code has stored the
+    // fresh credential — pick it up immediately instead of waiting for the poll.
+    vscode.window.onDidCloseTerminal((t) => {
+      if (!loginTerms.delete(t)) return
+      void refreshUsageNow().then(onUsageRefreshed)
+    }),
   )
   pollTimer = setInterval(refresh, POLL_MS)
-  usageTimer = setInterval(() => void refreshUsage().then(refresh), USAGE_POLL_MS)
+  usageTimer = setInterval(() => void refreshUsageNow().then(onUsageRefreshed), USAGE_POLL_MS)
   context.subscriptions.push({
     dispose: () => {
       if (pollTimer) clearInterval(pollTimer)
@@ -459,7 +557,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
   refresh()
-  void refreshUsage().then(refresh)
+  void refreshUsageNow().then(onUsageRefreshed)
 
   const current = vscode.workspace
     .getConfiguration("claudeCode")

@@ -2,3 +2,5 @@
 # etymd: correctness gate. Mirrors CI cheapest-first; blocks the push on any failure.
 echo "› pnpm typecheck"
 pnpm typecheck || exit 1
+echo "› etymd audit"
+npx etymd audit --no-ledger --fail-on risk || exit 1

@@ -57,6 +57,17 @@ provider() {
   fi
 }
 
+# Vision proxy URL folded into state.json (formerly a standalone vision-proxy.url
+# file). Unlike provider(), the value is a URL (colon/slash/dot), so capture
+# everything between the quotes after the "visionProxyUrl" key — not the
+# [A-Za-z0-9_-] charset provider() uses.
+proxy_url() {
+  [ -f "$STATE_FILE" ] || return 0
+  line="$(grep -F '"visionProxyUrl"' "$STATE_FILE" | head -n 1)"
+  [ -n "$line" ] || return 0
+  printf '%s\n' "$line" | sed -n 's/.*"visionProxyUrl"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+}
+
 # KEY=value lines only — parsed, never sourced, so a malformed value can't
 # execute shell or half-apply the env.
 load_env_file() {
@@ -131,6 +142,20 @@ if [ "$PROVIDER" != "anthropic" ]; then
     debug "provider env loaded from $ENV_FILE"
   else
     debug "no env profile at $ENV_FILE — running clean (anthropic)"
+  fi
+fi
+
+# Vision proxy (opt-in): when a proxy URL is present in state.json (written by
+# the extension's proxy host), route this non-Anthropic provider's traffic
+# through it so image turns can be served by Anthropic while text/code stays on
+# the provider. Its absence means the proxy is off or unreachable, and the
+# provider's own ANTHROPIC_BASE_URL stays in place (fail-open). The provider
+# name is appended as a path prefix so one shared proxy resolves the upstream.
+if [ "$PROVIDER" != "anthropic" ]; then
+  VP_URL="$(proxy_url)"
+  if [ -n "$VP_URL" ]; then
+    export ANTHROPIC_BASE_URL="${VP_URL}/${PROVIDER}"
+    debug "vision proxy on: ANTHROPIC_BASE_URL -> ${VP_URL}/${PROVIDER}"
   fi
 fi
 

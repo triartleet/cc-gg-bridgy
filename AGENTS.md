@@ -11,7 +11,7 @@ A Cursor/VS Code companion extension for the Claude Code extension: a per-projec
 switch (Anthropic ⇄ named env profiles — GLM, Kimi, any Anthropic-compatible endpoint)
 implemented as a wrapper shim around the Claude binary, plus a status bar with per-provider
 usage readout and a `beam` command that hands the active session to Anthropic Remote Control
-for phone/web reach. Built for the owner's daily multi-provider use; published publicly (MIT)
+for phone/web reach. Built for daily multi-provider use; published publicly (MIT)
 for anyone on the same setup. `DESIGN.md` is the decision record; `README.md` is the
 user-facing guide — keep that split.
 
@@ -27,12 +27,12 @@ user-facing guide — keep that split.
   surrounding code — a "new" thing usually exists.
 - **Minimal diffs.** Never touch files outside the task's scope.
 - **DESIGN.md is load-bearing.** Read its "Locked decisions" and "Non-goals" sections before any
-  non-trivial change; do not re-open a locked decision without the owner. Core invariants: the
+  non-trivial change; do not re-open a locked decision without the maintainer. Core invariants: the
   wrapper is a fail-open supervisor shim (never a fork, never mutates settings files), the
   toggle switches providers not models (never pin a model), and usage polling must never block.
 - **No test suite.** `pnpm typecheck` and `pnpm build` are the only automated gates; verify
   behavior manually in the Extension Development Host before calling a change done.
-- **Never commit or push unasked.** The owner drives version control; commits stay unattributed
+- **Never commit or push unasked.** The maintainer drives version control; commits stay unattributed
   (no Co-authored-by / generated-with trailers).
 - **Public repo.** Commit author is the personal identity already set in local git config —
   never a corporate one.
@@ -42,7 +42,7 @@ user-facing guide — keep that split.
 > **Advisory, not authoritative** — re-verify with `pnpm -r ls --depth -1` before
 > structure-sensitive changes, and update this section in the same change that moves files.
 
-- `src/` — 5 files
+- `src/` — 7 files
 - `.vscode/` — 2 files
 - `media/` — 2 files
 - `bin/` — 1 files

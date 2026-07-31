@@ -43,13 +43,14 @@ already exists natively.
    extension's own list. No resume-by-id command is contributed by the
    extension, so full automation would mean driving its webview blindly —
    rejected for v1. Terminal fallback (`claude --resume <id>` under swapped
-   env) stays available manually. Amended 2026-07-27 (owner request): the
+   env) stays available manually. Amended 2026-07-27 (maintainer request): the
    toast is now gated by `ccGgBridgy.switchToast` (default ON — it is the
-   only surface teaching the handoff flow to new users; the owner runs it
-   off, the status-bar label change being confirmation enough).
+   only surface teaching the handoff flow to new users; regular users disable
+   it once the handoff is muscle memory, the status-bar label change being
+   confirmation enough).
 4. **Scope: per-project.** State keyed by workspace folder; the shim resolves
    the project from its cwd. A scratch repo can run GLM while another project
-   stays on Anthropic (Fable/Opus — the owner switches models per task via
+   stays on Anthropic (Fable/Opus — a user switches models per task via
    /model; bridgy toggles the PROVIDER and never touches the model choice) in
    the same instant.
 5. **Remote reach: beam command over Anthropic's Remote Control** (added
@@ -57,13 +58,13 @@ already exists natively.
    an integrated terminal as `claude --resume <id> --remote-control <name>
    --permission-mode bypassPermissions`, under the project's provider env —
    terminal spawns bypass the wrapper, so beam injects glm.env itself. The
-   owner's envelope (check active sessions remotely, answer their questions,
+   intended remote-use envelope (check active sessions remotely, answer their questions,
    confirm graceful completion, send next steps, /model switching; config
    and screenshots explicitly out of scope; permission mode locked to max)
    is fully covered by the RC mirror in the Claude apps, so building any
    web app or relay (bespoke or Happy-style) was rejected — zero UI to
    maintain beats feature parity nobody asked for. Host is the integrated
-   terminal only (owner's call — accepts that a window quit kills the
+   terminal only (a deliberate trade-off — a window quit kills the
    beam); the RC connect is explicit per beam — bridgy never flips the
    "Enable Remote Control for all sessions" config, which stays the user's
    own /config choice.
@@ -278,6 +279,46 @@ already exists natively.
    becomes a reproducible case instead of a tired-human observation. The
    eleven-iteration history above is the motivation: each fix was correct
    but only live use could falsify it.
+9. **Vision proxy — opt-in, scoped exception to the no-proxy stance**
+   (added 2026-07-30, maintainer-approved). **Status (2026-07-31): z.ai repaired
+   the injected `analyze_image` tool upstream, so GLM vision now works natively
+   again (verified on two images); the proxy is no longer needed for current
+   operation and is retained, off by default, as a fallback for if/when z.ai
+   regresses.** GLM image input *was* broken server-side (z.ai's gateway converts
+   inline images to a hosted URL + a faulty `analyze_image` that returned one
+   fixed wrong image; see Risks). The opt-in localhost proxy
+   (`ccGgBridgy.visionProxy`, default off) routes
+   image-bearing turns to Anthropic pay-as-you-go while text and code stay on
+   the project's provider. Mechanism: the extension hosts an in-process
+   `node:http` server (`src/visionProxy.ts`); when on and an
+   `anthropic-vision.env` with a PAYG `ANTHROPIC_API_KEY` exists (the vision
+   model comes from the `ccGgBridgy.visionModel` user setting, overridable via
+   `CC_GG_BRIDGY_VISION_MODEL` in that file — the key stays file-based, never a
+   setting), it writes a
+   `visionProxyUrl` field into `state.json` (folded from a former standalone
+   `vision-proxy.url` file so the shim needs no extra file); the wrapper, for
+   non-anthropic providers, overrides `ANTHROPIC_BASE_URL` to
+   `http://127.0.0.1:<port>/<provider>` (provider = path prefix so one proxy
+   resolves the upstream). Routing is stateless body inspection of
+   `POST /<provider>/v1/messages`: forward to Anthropic iff the last user
+   message carries an `image` block OR the last message is a `tool_result`
+   continuing a Claude-started loop (most recent assistant `model` is
+   `claude*`); a plain-text follow-up therefore returns to the provider the
+   instant the image turn ends (no "sticking"). Anthropic leg: swap auth to
+   the PAYG `x-api-key`, rewrite `model`, leave the rest; pipe SSE back.
+   Upstream leg: forward verbatim with the original `Authorization`. **Fail-open
+   is load-bearing** — the wrapper routes through the proxy ONLY while a
+   `visionProxyUrl` field is present in `state.json`; missing/unreachable ⇒ direct provider injection
+   (today's behavior), so Claude Code never breaks because of the proxy.
+   **Lifecycle/resource safety**: fixed configurable port shared across
+   windows (first to bind = host; `EADDRINUSE` ⇒ health-probe; ours ⇒ guest
+   that promotes if the host dies); shutdown calls `server.close()` +
+   `closeAllConnections()` + a grace destroy of tracked sockets so the port
+   frees immediately (no keep-alive lock); each request owns an
+   `AbortController` that tears down the upstream the moment the client socket
+   closes (no dangling SSE, no silent PAYG billing — validated: client abort
+   closed the upstream in ~26 ms); the URL file is atomic (tmp+rename) and
+   removed on host shutdown. Amends Non-goal 1 below.
 
 ## Architecture
 
@@ -503,7 +544,7 @@ Components:
   extension process may still hold (S5: registry says live). Interleaved
   JSONL appends are structurally fine, but replying from both surfaces forks
   the conversation DAG. Mitigation: the busy gate plus a live-flag toast
-  telling the owner to close the extension conversation. Verified live
+  telling the user to close the extension conversation. Verified live
   (tmux probes, 2026-07-26): resume + `--remote-control` + bypass works and
   connects with no pairing step, and the CLI does NOT refuse resuming a
   session another live process holds — a second head opens silently on the
@@ -528,12 +569,44 @@ Components:
   keeps Claude names in `/model` (no provider env at spawn); the picker is
   capped at four tiers (use `/model <raw-id>` for more); `/status` is the
   ground truth for what's actually serving.
+- **GLM image/vision input was non-functional (z.ai-side, verified broken
+  2026-07-30; repaired upstream 2026-07-31).** Claude Code sends images as
+  standard inline base64 content blocks; z.ai's gateway does not pass them
+  inline — it uploads each to its own object storage
+  (`maas-log-prod.cn-wlcb.ufileos.com/anthropic/<session>/…`), presents the
+  model with a URL, and injects a z.ai `analyze_image` server-tool (surfaced
+  as `mcp__4_5v_mcp__analyze_image`, ~GLM-4.5V) for the model to "see" it.
+  That tool *returned* one fixed wrong image regardless of input — the same
+  "bee" came back for both `icon.png` and `bridgy-logo.png` via the real CLI
+  under GLM env, while direct inline-base64 curls read each correctly (the
+  Paris-poster icon, the regression-diagram logo). Not model-specific
+  (`glm-5.2` and `glm-5.2[1m]` both failed via the CLI) and not
+  streaming-triggered (curl `stream:true` read inline fine); the trigger was
+  the full Claude Code request envelope, not any isolatable env flag. z.ai
+  does not implement `/v1/files` (GET/POST → 404), and `files-api-2025-04-14`
+  only gates the unused Anthropic-SDK Files resource — so no `CLAUDE_CODE_*`
+  knob reroutes the image. **As of 2026-07-31 z.ai repaired the tool — GLM
+  vision works natively again (verified on two images).** Bridgy's fail-open,
+  env-only design cannot alter gateway behavior, so the repair was z.ai's to
+  make. Retained fallback if it regresses: the opt-in vision proxy (decision 9)
+  routes image turns to Anthropic pay-as-you-go while GLM keeps text/code; or
+  toggle the project to Anthropic (subscription quota) for vision.
+  Recorded in project memory `glm-image-input-broken`; re-test after a z.ai
+  update.
 
 ## Non-goals
 
 - Never proxy or intercept provider traffic; never touch OAuth flows. Both
   providers are consumed exactly as their subscriptions intend (Anthropic
   first-party; z.ai's own Anthropic-compatible Coding Plan endpoint).
+  - **Scoped exception — vision proxy (opt-in `ccGgBridgy.visionProxy`, off by
+    default; decision 9, maintainer-approved 2026-07-30):** when enabled, a
+    localhost pass-through forwards your own traffic verbatim to the
+    configured provider and redirects only image-bearing turns to Anthropic
+    under a pay-as-you-go key you provide. It rewrites nothing but the model
+    field on those turns, inspects or stores no other content, and touches no
+    OAuth flow. Off ⇒ zero traffic proxied — the default and the shipped
+    public posture.
   - **Scoped exception — live Anthropic usage (opt-in `ccGgBridgy.anthropicLiveUsage`,
     off by default):** the statusline feed is terminal-only, so a panel-only user
     sees stale usage. When enabled, bridgy reads Claude Code's *own* OAuth
@@ -561,9 +634,9 @@ Components:
   so GLM beams are local-only today. Investigate remote control for the GLM
   leg: Happy (open-source, E2E-encrypted, wraps the CLI so it inherits the
   injected env — the leading candidate), or other bridges. Evaluate against
-  the owner's envelope (watch sessions, answer questions, confirm
-  completion, send next steps, model switching) and a managed-Mac
-  constraint (outbound-only connections).
+  the remote-use envelope (watch sessions, answer questions, confirm
+  completion, send next steps, model switching) and the constraint of
+  outbound-only connections.
 - Button in the Claude view's title bar (`view/title` menu on
   `claudeVSCodeSidebar`/`claudeVSCodeSidebarSecondary`) beside the status-bar
   item, if Cursor honors foreign-view menu contributions.

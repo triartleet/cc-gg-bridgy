@@ -55,6 +55,14 @@ Validated live against Claude Code extension 2.1.220 (see
   token from the macOS Keychain and polls the usage endpoint itself, so the
   bar stays fresh in the panel too. macOS only; fails open to the statusline
   feed on any miss. When the session expires it prompts a one-click re-login.
+- **Vision on any provider (opt-in proxy)** — a provider whose gateway mangles
+  images can still get working vision. An opt-in localhost proxy keeps the
+  project on GLM/Kimi for text and code but routes image-bearing turns — and
+  the tool-loops they start — to Anthropic pay-as-you-go, so your Claude
+  subscription quota is untouched. Off by default; with it off, no traffic is
+  proxied at all. *(z.ai GLM mangled images in mid-2026 but repaired its
+  `analyze_image` tool on 2026-07-31, so GLM vision currently works natively;
+  the proxy is kept as a fallback for if that regresses.)*
 - **Busy gate** — switching is gated while a response looks in-flight, so a
   toggle can't corrupt an open turn; a forced switch asks for confirmation.
 - **Native session handoff** — transcripts are provider-agnostic and shared,
@@ -144,6 +152,16 @@ Validated live against Claude Code extension 2.1.220 (see
   (the reference mapping) so `/model` shows real names instead of falling
   through to built-in Anthropic ids. Connection vars are never inherited, and
   a profile that sets its own tiers (like `kimi.env`) is untouched.
+- **Vision proxy (opt-in)** — when on, bridgy hosts a localhost HTTP server
+  and the wrapper points the CLI at `http://127.0.0.1:<port>/<provider>`
+  instead of the provider directly. The proxy inspects each `/v1/messages`
+  request: an image-bearing turn — or a tool-loop a Claude image turn started
+  — goes to `api.anthropic.com` under a pay-as-you-go key with a Claude model;
+  everything else forwards to the provider verbatim (original auth, untouched).
+  The routing is stateless and only looks at the last message, so a plain text
+  follow-up returns the conversation to GLM immediately. It fails open: no
+  creds, no URL file, or proxy unreachable ⇒ the wrapper injects the provider
+  env directly (today's behavior), so Claude Code never breaks because of it.
 
 ## Install
 
@@ -209,6 +227,28 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
    When the refresh token eventually expires it prompts a one-click re-login
    (or run **`CC-GG-bridgy: Re-login Anthropic`**), which runs `claude login`
    and stores a fresh token bridgy then reads.
+5. **(Optional) Vision on GLM/Kimi via the proxy.** Some provider gateways
+   mangle pasted images — z.ai GLM did in mid-2026 (served a fixed wrong
+   picture instead of yours) until it repaired its `analyze_image` tool on
+   2026-07-31, so GLM vision currently works natively. This step is the
+   fallback for if that regresses, or for another provider that mangles images:
+   to keep text and code on GLM while routing image turns to Anthropic, put a
+   pay-as-you-go Anthropic key in `~/.config/cc-gg-bridgy/anthropic-vision.env`:
+
+   ```bash
+   ANTHROPIC_API_KEY=sk-ant-your-payg-key
+   # optional — override the vision model from the setting:
+   # CC_GG_BRIDGY_VISION_MODEL=claude-haiku-4-5-20251001
+   ```
+
+   then set **`ccGgBridgy.visionProxy: true`**. The vision model is the
+   **`ccGgBridgy.visionModel`** setting (default `claude-sonnet-5`; set it to
+   e.g. `claude-haiku-4-5-20251001` for cheaper vision). Bridgy starts a
+   localhost proxy: image turns route to Anthropic under your PAYG key (cents
+   per image, billed to that key — your Claude subscription quota is
+   untouched), while everything else stays on the provider. Off by default;
+   off ⇒ nothing is proxied. The port is `ccGgBridgy.visionProxyPort`
+   (default 4399), shared across windows.
 
 ## Using it
 
@@ -284,6 +324,17 @@ staleness age. When the OAuth refresh token expires, run
 **`CC-GG-bridgy: Re-login Anthropic`** (auto-prompted once per expiry) to
 mint a fresh one via `claude login`.
 
+`ccGgBridgy.visionProxy` — route image-bearing turns to Anthropic
+pay-as-you-go while keeping text and code on GLM/Kimi (default off). Requires
+`~/.config/cc-gg-bridgy/anthropic-vision.env` with an `ANTHROPIC_API_KEY`. With
+it on, bridgy hosts a localhost proxy that the wrapper routes non-Anthropic
+providers through; off, nothing is proxied. `ccGgBridgy.visionProxyPort` — the
+proxy's localhost port (default 4399, shared across windows).
+`ccGgBridgy.visionModel` — the Claude model used for the vision leg (default
+`claude-sonnet-5`; e.g. `claude-haiku-4-5-20251001` for cheaper vision;
+overridable per provider via `CC_GG_BRIDGY_VISION_MODEL` in the env file). Logs
+route to `~/.config/cc-gg-bridgy/vision-proxy.log`.
+
 Debugging: `touch ~/.config/cc-gg-bridgy/debug-on` (or set
 `CC_GG_BRIDGY_DEBUG=1` in the spawn env) makes the shim log its
 argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
@@ -320,6 +371,18 @@ each fix is provable and regressions are caught before a human notices.
 - **A fresh GLM conversation may open on the small/fast model slot** (e.g.
   `glm-4.7`) depending on the panel's sticky model choice — check `/model`
   after switching. Bridgy deliberately never touches model choice.
+- **GLM image input was broken (z.ai-side) — repaired upstream 2026-07-31;
+  opt-in vision proxy retained as a fallback.** In mid-2026 z.ai's gateway
+  converted an attached image to a hosted URL and routed it through its own
+  `analyze_image` tool, which returned one fixed wrong image regardless of
+  what you sent (verified against Claude Code 2.1.220). z.ai fixed that tool on
+  2026-07-31 (verified on two images), so GLM vision works natively again. The
+  opt-in **`ccGgBridgy.visionProxy`** (with an `anthropic-vision.env`, setup
+  step 5) is kept — off by default — for if z.ai regresses: image turns route
+  to Anthropic pay-as-you-go while text and code stay on GLM, spending no
+  subscription quota. With the proxy off, the other fallback is to switch the
+  project to Anthropic for vision (those turns run on your Claude subscription
+  quota). Re-test GLM vision after a z.ai update.
 - **Kimi: the pay-as-you-go leg is validated live** (Moonshot Open
   Platform endpoint, env contract, model-slot pinning, real CLI turn served
   by `kimi-k3`); the **Kimi Code plan endpoint and its usage readout are
@@ -371,12 +434,18 @@ each fix is provable and regressions are caught before a human notices.
 
 ## Disclaimer
 
-Not affiliated with Anthropic, Z.ai, or Moonshot AI. Bridgy never proxies or intercepts
-provider traffic and never touches OAuth flows — it only sets an official
-extension setting and injects documented environment variables, so each
-provider is consumed exactly as its subscription intends. Claude Code is a
-product of Anthropic, PBC; use of each provider is governed by its own
-terms.
+Not affiliated with Anthropic, Z.ai, or Moonshot AI. By default bridgy never
+proxies or intercepts provider traffic and never touches OAuth flows — it only
+sets an official extension setting and injects documented environment
+variables, so each provider is consumed exactly as its subscription intends.
+The one scoped exception is the opt-in vision proxy
+(`ccGgBridgy.visionProxy`, off by default): when enabled it runs a localhost
+pass-through that forwards your own traffic verbatim to your configured
+provider, redirecting only image-bearing turns to Anthropic under a
+pay-as-you-go key you provide — it rewrites nothing but the model field on
+those turns, inspects or stores no other content, and touches no OAuth flow.
+Claude Code is a product of Anthropic, PBC; use of each provider is governed
+by its own terms.
 
 ## License
 

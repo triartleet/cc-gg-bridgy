@@ -32,6 +32,7 @@ import {
   stateDir,
 } from "./state"
 import { currentUsage, formatReset, isAnthropicLoginNeeded, ProviderUsage, refreshUsage } from "./usage"
+import { disposeVisionProxy, syncVisionProxy } from "./visionProxy"
 
 const POLL_MS = 2000
 const USAGE_POLL_MS = 5 * 60 * 1000
@@ -547,6 +548,10 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!loginTerms.delete(t)) return
       void refreshUsageNow().then(onUsageRefreshed)
     }),
+    // Vision proxy reacts to its own settings (enable/disable, port) live.
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("ccGgBridgy")) syncVisionProxy()
+    }),
   )
   pollTimer = setInterval(refresh, POLL_MS)
   usageTimer = setInterval(() => void refreshUsageNow().then(onUsageRefreshed), USAGE_POLL_MS)
@@ -584,9 +589,13 @@ export function activate(context: vscode.ExtensionContext): void {
         if (pick === "Configure now") void setupWrapper(context)
       })
   }
+
+  // Start the vision proxy if the opt-in setting + creds are in place.
+  syncVisionProxy()
 }
 
 export function deactivate(): void {
   if (pollTimer) clearInterval(pollTimer)
   if (usageTimer) clearInterval(usageTimer)
+  disposeVisionProxy()
 }

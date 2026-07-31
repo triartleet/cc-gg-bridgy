@@ -13,6 +13,10 @@ const NAME_RE = /^[A-Za-z0-9_-]+$/
 export interface BridgyState {
   projects: Record<string, Provider>
   default: Provider
+  // Folded in from a former standalone vision-proxy.url file: the localhost URL
+  // the vision-proxy host writes so the shim (which already reads state.json)
+  // can route through it. Absent ⇒ proxy off/unreachable (fail-open).
+  visionProxyUrl?: string
 }
 
 export const stateDir = path.join(os.homedir(), ".config", "cc-gg-bridgy")
@@ -68,6 +72,9 @@ export function readState(): BridgyState {
     return {
       projects,
       default: validName(raw.default) ? raw.default : ANTHROPIC,
+      ...(typeof raw.visionProxyUrl === "string" && raw.visionProxyUrl
+        ? { visionProxyUrl: raw.visionProxyUrl }
+        : {}),
     }
   } catch {
     return { projects: {}, default: ANTHROPIC }
@@ -105,6 +112,29 @@ export function setProvider(projectPath: string, provider: Provider): void {
   }
 
   s.projects[key] = provider
+
+  const tmp = `${stateFile}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`
+  fs.writeFileSync(tmp, JSON.stringify(s, null, 2))
+  fs.renameSync(tmp, stateFile)
+}
+
+// The vision-proxy host writes its localhost URL here (folded in from a former
+// standalone vision-proxy.url file) so the shim — which already reads
+// state.json — can route through it. Same read-late/atomic-rename discipline as
+// setProvider; null removes the field (proxy off/unreachable ⇒ shim fail-opens
+// to direct provider injection).
+export function setVisionProxyUrl(url: string | null): void {
+  fs.mkdirSync(stateDir, { recursive: true })
+
+  let s: BridgyState
+  try {
+    s = readState()
+  } catch {
+    s = { projects: {}, default: ANTHROPIC }
+  }
+
+  if (url) s.visionProxyUrl = url
+  else delete s.visionProxyUrl
 
   const tmp = `${stateFile}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(s, null, 2))

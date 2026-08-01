@@ -456,8 +456,9 @@ function becomeGuest(port: number): void {
 // Teardown: stop the guest watcher; if host, stop accepting, destroy every
 // in-flight socket (closeAllConnections + a grace destroy of stragglers) so
 // the port frees immediately instead of waiting out keep-alive idles, and
-// remove the url file so new CLIs don't route at a dead proxy. Only the HOST
-// touches the url file; a guest shutting down leaves it for its host.
+// clear the visionProxyUrl key from state.json so new CLIs don't route at a
+// dead proxy. Only the HOST touches that key; a guest shutting down leaves
+// it for its host.
 function stopInternal(): void {
   if (guestTimer) {
     clearInterval(guestTimer)

@@ -317,8 +317,10 @@ already exists natively.
    frees immediately (no keep-alive lock); each request owns an
    `AbortController` that tears down the upstream the moment the client socket
    closes (no dangling SSE, no silent PAYG billing — validated: client abort
-   closed the upstream in ~26 ms); the URL file is atomic (tmp+rename) and
-   removed on host shutdown. Amends Non-goal 1 below.
+   closed the upstream in ~26 ms); the `visionProxyUrl` write rides
+   state.json's atomic tmp+rename and the key is removed on host shutdown
+   (this replaced an earlier standalone `vision-proxy.url` file, folded into
+   state.json before 0.6.0 shipped). Amends Non-goal 1 below.
 
 ## Architecture
 

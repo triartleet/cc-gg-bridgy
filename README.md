@@ -9,159 +9,53 @@
   </p>
 </div>
 
-A tiny Cursor/VS Code companion extension that adds two things the official
-Claude Code extension doesn't have. A **provider switch**: one status-bar
-button moves your next Claude Code session between **Anthropic (Claude
-subscription)** and any **Anthropic-compatible endpoint** you drop an env
-profile for — **z.ai (GLM Coding Plan)** and **Kimi Code (Moonshot)** ship
-with usage adapters — same extension UI, same session history, all
-directions, with **every provider's 5-hour usage** side by side in the
-status bar. And a **beam command**: the extension UI exposes no Remote
-Control, so bridgy hands your active session to a terminal with it enabled
-— one palette command and the session is on your phone, execution still on
-your machine.
+One AI subscription answers every project you work on, so they all drain the same allowance — and when you hit the limit, everything stops, whether a project needed the expensive plan or not. CC-GG-bridgy adds a switch to the Claude Code extension in Cursor and VS Code so each project can pick its own provider — the company and subscription that answers your AI requests. The other providers are separate subscriptions you sign up and pay for yourself; bridgy connects them, it doesn't include them. Installing bridgy changes nothing until you accept the one pop-up question it shows and opt a project in. And if it is ever broken, misconfigured, or deleted, Claude Code keeps working as if bridgy were never installed.
+
+Works on macOS and Linux (not Windows), alongside the official Claude Code extension.
+
+Your status bar afterwards — one meter per subscription (C = Claude, G = GLM, K = Kimi):
 
 ```text
 ⇄ Claude · C 28% · G 1% · K 7%
 ```
 
-It is a **supervisor, not a fork**: the official Claude Code extension stays
-untouched and does all the real work. Bridgy only decides which provider the
-CLI process talks to at spawn time, gates switching on "no answer pending",
-and walks you through resuming the conversation on the other side.
+## Your first switch
 
-Validated live against Claude Code extension 2.1.220 (see
-[DESIGN.md](DESIGN.md) for the design record and the spike evidence).
+1. **Install bridgy and accept the one-time pop-up question** it shows — that single yes is all the setup Claude Code itself needs. If you decline, bridgy does nothing at all. Details in [Install](#install).
+2. **Add one provider.** [Provider setup](#provider-setup) walks you through it: you copy a short ready-made block into a small text file and paste in the sign-in details the provider gives you — the blocks for z.ai's GLM plan and Moonshot's Kimi plan are ready to copy. Each provider you add becomes one choice on the switch.
+3. **Click the `⇄` item in the status bar and start a new conversation.** That conversation is answered by the provider you just picked — in this project only.
 
-## Features
+From then on the meter at the bottom of the window shows how much of each subscription's allowance you've used and when it resets, side by side.
 
-- **Per-project provider switch** — one workspace can run GLM or Kimi while
-  every other window stays on Anthropic. Click the status-bar item to
-  switch: with two providers it flips directly, with three or more it opens
-  a picker. The next new conversation in that project uses the new provider.
-  No window reload, no settings churn.
-- **Named env profiles** — any `~/.config/cc-gg-bridgy/<name>.env` file is a
-  provider. `glm.env` and `kimi.env` are the documented ones, but any
-  Anthropic-compatible endpoint works (unknown endpoints just show no usage
-  numbers).
-- **Multi-provider usage readout** — the status item shows every provider's
-  5-hour **and weekly** windows plus the next 5-hour reset, inline
-  (`⇄ Claude │ C 28%/82% ↻14:00 · G 1%/40% ↻15:30`). The tooltip adds plan
-  tiers and reset times. The item takes the warning tint when the active
-  provider's 5-hour window passes 80%.
-- **Live Anthropic usage (opt-in)** — the Claude column can read usage
-  directly instead of waiting on the terminal statusline. Enable
-  `ccGgBridgy.anthropicLiveUsage` and bridgy refreshes Claude Code's OAuth
-  token from the macOS Keychain and polls the usage endpoint itself, so the
-  bar stays fresh in the panel too. macOS only; fails open to the statusline
-  feed on any miss. When the session expires it prompts a one-click re-login.
-- **Vision on any provider (opt-in proxy)** — a provider whose gateway mangles
-  images can still get working vision. An opt-in localhost proxy keeps the
-  project on GLM/Kimi for text and code but routes image-bearing turns — and
-  the tool-loops they start — to Anthropic pay-as-you-go, so your Claude
-  subscription quota is untouched. Off by default; with it off, no traffic is
-  proxied at all. *(z.ai GLM mangled images in mid-2026 but repaired its
-  `analyze_image` tool on 2026-07-31, so GLM vision currently works natively;
-  the proxy is kept as a fallback for if that regresses.)*
-- **Busy gate** — switching is gated while a response looks in-flight, so a
-  toggle can't corrupt an open turn; a forced switch asks for confirmation.
-- **Native session handoff** — transcripts are provider-agnostic and shared,
-  so after a toggle you just start a new conversation and resume the previous
-  session from Claude Code's own session list. Nothing is copied or proxied.
-- **Beam to phone (Remote Control)** — one command resumes the project's
-  active session in an integrated terminal with Claude Code's Remote Control
-  enabled, so you can watch it, answer its questions, and send it next steps
-  from the Claude mobile/web apps while execution stays on your machine.
-  Busy-gated like the toggle, and launched with
-  `--permission-mode bypassPermissions` so the away-run doesn't stall on
-  prompts.
-- **Fail-open by design** — on any doubt (missing state, unreadable config,
-  provider endpoint down) the wrapper execs the real CLI untouched and the
-  usage rows show the reason instead of erroring. Claude Code keeps working
-  even if bridgy is misconfigured or deleted.
+## What you get
 
-## How it works
+- **A per-project switch** — a switch changes which provider this project's next conversations use; other projects and windows are untouched. → [Everyday use](#everyday-use)
+- **Any compatible provider** — each one is a small saved file with its connection details; GLM and Kimi also show their allowance numbers in the meter, other providers work but show no numbers. → [Provider setup](#provider-setup)
+- **Side-by-side usage meters** — the status bar readout shows every subscription's allowance and reset time at once. → [Usage readouts](#usage-readouts)
+- **Live Claude usage** *(opt-in, off by default; macOS only)* — the Claude number refreshes on its own instead of waiting for other activity. → [Usage readouts](#usage-readouts)
+- **Vision fallback** *(opt-in, off by default)* — if a provider mishandles images, the messages that carry images can be answered by Claude instead, billed per use to a separate account you set up: an extra cost, and only if you turn this on. → [Settings reference](#settings-reference)
+- **The busy gate** — while an answer is being written, switching waits; forcing it asks you first. → [Everyday use](#everyday-use)
+- **Conversations carry over** — continue any conversation on the other provider from Claude Code's own list of past conversations; nothing is copied. → [Everyday use](#everyday-use)
+- **Beam to phone** — beam is sending an ongoing conversation to your phone while the work keeps running on your computer; it needs the Claude app on your phone, signed in to your Claude account. → [Everyday use](#everyday-use)
+- **Fail-open safety** — bridgy failing can never take Claude Code down with it; the worst case is that the switch quietly does nothing. → [Under the hood](#under-the-hood)
 
-- **Process-wrapper shim.** Bridgy points `claudeCode.claudeProcessWrapper`
-  (an official extension setting) at a small POSIX-sh shim. Every time the
-  extension launches a Claude CLI process, the shim reads bridgy's
-  per-project state and either execs the real binary clean (Anthropic) or
-  with that provider's env profile injected. Each new conversation is its
-  own CLI process, which is why the switch applies without a reload.
-- **Per-project state** — `~/.config/cc-gg-bridgy/state.json` maps workspace
-  path → provider name (plus a `default`). `anthropic` is reserved for the
-  clean passthrough; every other name means "inject `<name>.env`". The shim
-  resolves the project from the spawned process's cwd, which is the
-  workspace folder.
-- **Provider profiles** — `~/.config/cc-gg-bridgy/<name>.env` (never
-  committed; strict `KEY=value` lines, parsed not sourced). `glm.env`, per
-  z.ai's Claude Code docs:
+## How it works, in plain words
 
-  ```bash
-  ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
-  ANTHROPIC_AUTH_TOKEN=your-coding-plan-key
-  ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.2[1m]
-  ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.2[1m]
-  ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7
-  ANTHROPIC_SMALL_FAST_MODEL=glm-4.7
-  ```
+### Providers and profiles
 
-  `kimi.env`, per Moonshot's Kimi Code → Claude Code docs (their endpoint
-  does **not** remap Claude model names, so every slot var is pinned; Tool
-  Search isn't supported on their side):
+A provider is the company and subscription that answers your AI requests — Anthropic's Claude plan, z.ai's GLM plan, or Moonshot's Kimi plan. Each is its own paid plan with its own allowance. A profile is a small saved file with the connection details for one provider; each file becomes one choice on the switch. Anthropic needs no file — it is the built-in default that bridgy leaves untouched. GLM and Kimi have ready-made profiles in this guide and their allowance numbers show in the meter; any other Anthropic-compatible service (one that speaks the same request format Claude Code already uses) works too — it just shows no usage numbers. [Provider setup](#provider-setup) walks through creating the files.
 
-  ```bash
-  ANTHROPIC_BASE_URL=https://api.kimi.com/coding/
-  ANTHROPIC_API_KEY=sk-kimi-your-coding-key
-  ANTHROPIC_AUTH_TOKEN=sk-kimi-your-coding-key
-  ANTHROPIC_MODEL=k3
-  ANTHROPIC_DEFAULT_OPUS_MODEL=k3
-  ANTHROPIC_DEFAULT_SONNET_MODEL=k3
-  ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-for-coding
-  CLAUDE_CODE_SUBAGENT_MODEL=kimi-for-coding
-  CLAUDE_CODE_MAX_CONTEXT_TOKENS=262144
-  CLAUDE_CODE_AUTO_COMPACT_WINDOW=262144
-  ENABLE_TOOL_SEARCH=false
-  ```
+### When a switch takes effect
 
-- **Beam = native handoff + Remote Control.** The extension UI can't enable
-  Anthropic's Remote Control (a research preview for terminal sessions), but
-  the session store is shared — so beam resumes the project's active session
-  in an integrated terminal as
-  `claude --resume <id> --remote-control <name> --permission-mode bypassPermissions`,
-  under the project's provider env. The session then appears in the Claude
-  iOS/Android app and at claude.ai/code while execution stays local. Round
-  trip verified: `/exit` the terminal and resume from the panel's local
-  session list — phone turns included.
-- **Busy detection** — bridgy finds the project's live session via Claude
-  Code's session registry (`~/.claude/sessions/<pid>.json`), then classifies
-  busy/idle from the transcript tail (including nested subagent activity).
-  Long silent tool runs read as busy — the safe direction — and a 30-minute
-  staleness escape stops a dead session from gating forever.
-- **Usage sources** — profiles get a usage adapter picked by their base
-  URL's hostname: z.ai profiles query the GLM Coding Plan quota endpoint,
-  kimi.com profiles query the Kimi Code usage endpoint (community-documented
-  — parsed defensively, degrades to "usage unavailable" on surprises), other
-  endpoints show no numbers. The Claude side defaults to the `rate_limits`
-  payload Claude Code hands to statusline scripts, teed to a file (see setup
-  step 3) — no credential handling. With `ccGgBridgy.anthropicLiveUsage` on,
-  the Claude side instead refreshes the OAuth token from the Keychain and
-  polls the usage endpoint directly (panel-fresh; see below).
-- **Tier-label fallback** — a provider profile that omits the
-  `ANTHROPIC_DEFAULT_<TIER>_MODEL[_NAME]` vars inherits them from `glm.env`
-  (the reference mapping) so `/model` shows real names instead of falling
-  through to built-in Anthropic ids. Connection vars are never inherited, and
-  a profile that sets its own tiers (like `kimi.env`) is untouched.
-- **Vision proxy (opt-in)** — when on, bridgy hosts a localhost HTTP server
-  and the wrapper points the CLI at `http://127.0.0.1:<port>/<provider>`
-  instead of the provider directly. The proxy inspects each `/v1/messages`
-  request: an image-bearing turn — or a tool-loop a Claude image turn started
-  — goes to `api.anthropic.com` under a pay-as-you-go key with a Claude model;
-  everything else forwards to the provider verbatim (original auth, untouched).
-  The routing is stateless and only looks at the last message, so a plain text
-  follow-up returns the conversation to GLM immediately. It fails open: no
-  creds, no URL file, or proxy unreachable ⇒ the wrapper injects the provider
-  env directly (today's behavior), so Claude Code never breaks because of it.
+A switch applies to the **next new conversation** you start in the project. Every conversation keeps the provider it started on, so nothing you already have open changes hands mid-thought, and no window reload is ever needed. While an answer is being written, the busy gate blocks switching — bridgy watches the conversation and holds the switch until the response finishes; forcing a switch anyway asks for your confirmation first.
+
+### Open conversations move too
+
+When you switch, the open conversations bridgy is tracking close and reopen by themselves under the new provider — same transcript, one brief flicker, and the tab you were on gets focus back. A conversation that is mid-response is never interrupted; it keeps its old provider until you close it. Tabs bridgy could not identify (for example, ones open since before it started) simply move to the new provider once you close and resume them. To continue any conversation on the other provider yourself, resume it from Claude Code's own list of past conversations — the transcript carries over natively, and nothing is copied anywhere.
+
+### Safe by design
+
+Bridgy is a **supervisor, not a fork** — it doesn't replace or modify the official Claude Code extension; that extension stays untouched and does all the real work. Bridgy only sets one official Claude Code setting and hands the program its connection details when it starts (documented environment variables — nothing hidden). By default it never intercepts your traffic (what you send and receive) and never touches your sign-in. There are two narrow opt-ins, both off by default: the [live Claude usage readout](#usage-readouts) (macOS only) and the [vision fallback proxy](#settings-reference) — a proxy here being a small relay on your own computer that passes your requests along. And bridgy fails open: if it is broken, misconfigured, or deleted, Claude Code keeps working as if bridgy were never installed. The full mechanics are in [Under the hood](#under-the-hood) and the [Disclaimer](#disclaimer).
 
 ## Install
 
@@ -198,9 +92,9 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
    window routes CLI spawns through the shim; on the Anthropic default the
    shim is a pure passthrough.
 2. **Add provider profiles.** Create `~/.config/cc-gg-bridgy/<name>.env`
-   files as shown above (`glm.env`, `kimi.env`, …). Each file becomes a
-   provider in the switch; no files → the switch reports there's nothing to
-   switch to.
+   files — see [Provider setup](#provider-setup) for the documented `glm.env`
+   and `kimi.env` blocks. Each file becomes a provider in the switch; no
+   files → the switch reports there's nothing to switch to.
 3. **(Optional) Feed the Claude usage readout.** Claude Code only hands
    `rate_limits` to statusline scripts, so bridgy reads a tee of that
    payload. If you use a custom statusline, add this after it reads stdin
@@ -227,38 +121,97 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
    When the refresh token eventually expires it prompts a one-click re-login
    (or run **`CC-GG-bridgy: Re-login Anthropic`**), which runs `claude login`
    and stores a fresh token bridgy then reads.
-5. **(Optional) Vision on GLM/Kimi via the proxy.** Some provider gateways
-   mangle pasted images — z.ai GLM did in mid-2026 (served a fixed wrong
-   picture instead of yours) until it repaired its `analyze_image` tool on
-   2026-07-31, so GLM vision currently works natively. This step is the
-   fallback for if that regresses, or for another provider that mangles images:
-   to keep text and code on GLM while routing image turns to Anthropic, put a
-   pay-as-you-go Anthropic key in `~/.config/cc-gg-bridgy/anthropic-vision.env`:
+5. **(Optional) Vision on GLM/Kimi via the proxy.** See
+   [Vision on GLM/Kimi (opt-in proxy)](#vision-on-glmkimi-opt-in-proxy) —
+   off by default, and only worth setting up if your provider's gateway
+   mangles images.
 
-   ```bash
-   ANTHROPIC_API_KEY=sk-ant-your-payg-key
-   # optional — override the vision model from the setting:
-   # CC_GG_BRIDGY_VISION_MODEL=claude-haiku-4-5-20251001
-   ```
+## Provider setup
 
-   then set **`ccGgBridgy.visionProxy: true`**. The vision model is the
-   **`ccGgBridgy.visionModel`** setting (default `claude-sonnet-5`; set it to
-   e.g. `claude-haiku-4-5-20251001` for cheaper vision). Bridgy starts a
-   localhost proxy: image turns route to Anthropic under your PAYG key (cents
-   per image, billed to that key — your Claude subscription quota is
-   untouched), while everything else stays on the provider. Off by default;
-   off ⇒ nothing is proxied. The port is `ccGgBridgy.visionProxyPort`
-   (default 4399), shared across windows.
+Profiles live at `~/.config/cc-gg-bridgy/<name>.env` — strict `KEY=value`
+lines, parsed not sourced, never committed anywhere.
 
-## Using it
+### GLM (z.ai Coding Plan)
+
+`glm.env`, per z.ai's Claude Code docs:
+
+```bash
+ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
+ANTHROPIC_AUTH_TOKEN=your-coding-plan-key
+ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.2[1m]
+ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.2[1m]
+ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7
+ANTHROPIC_SMALL_FAST_MODEL=glm-4.7
+```
+
+### Kimi Code (Moonshot)
+
+`kimi.env`, per Moonshot's Kimi Code → Claude Code docs. Their endpoint does
+**not** remap Claude model names, so every slot var is pinned; Tool Search
+isn't supported on their side. See the Kimi bullet in
+[Limitations & caveats](#limitations--caveats) for what's validated and
+what's still open.
+
+```bash
+ANTHROPIC_BASE_URL=https://api.kimi.com/coding/
+ANTHROPIC_API_KEY=sk-kimi-your-coding-key
+ANTHROPIC_AUTH_TOKEN=sk-kimi-your-coding-key
+ANTHROPIC_MODEL=k3
+ANTHROPIC_DEFAULT_OPUS_MODEL=k3
+ANTHROPIC_DEFAULT_SONNET_MODEL=k3
+ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-for-coding
+CLAUDE_CODE_SUBAGENT_MODEL=kimi-for-coding
+CLAUDE_CODE_MAX_CONTEXT_TOKENS=262144
+CLAUDE_CODE_AUTO_COMPACT_WINDOW=262144
+ENABLE_TOOL_SEARCH=false
+```
+
+### Any other Anthropic-compatible endpoint
+
+Any `~/.config/cc-gg-bridgy/<name>.env` file is a provider — drop the file
+and it appears in the switch. Same rules: strict `KEY=value`, parsed not
+sourced, never committed. Unknown endpoints work fully but show no usage
+numbers in the status bar. A profile that omits the model-tier vars inherits
+its `/model` labels from `glm.env` — the full rule is in
+[Under the hood](#under-the-hood).
+
+### Vision on GLM/Kimi (opt-in proxy)
+
+Some provider gateways mangle pasted images — z.ai GLM did in mid-2026
+(served a fixed wrong picture instead of yours) until it repaired its
+`analyze_image` tool on 2026-07-31, so GLM vision currently works natively.
+This proxy is the fallback for if that regresses, or for another provider
+that mangles images: to keep text and code on GLM while routing image turns
+to Anthropic, put a pay-as-you-go Anthropic key in
+`~/.config/cc-gg-bridgy/anthropic-vision.env`:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-your-payg-key
+# optional — override the vision model from the setting:
+# CC_GG_BRIDGY_VISION_MODEL=claude-haiku-4-5-20251001
+```
+
+then set **`ccGgBridgy.visionProxy: true`**. The vision model is the
+**`ccGgBridgy.visionModel`** setting (default `claude-sonnet-5`; set it to
+e.g. `claude-haiku-4-5-20251001` for cheaper vision). Bridgy starts a
+localhost proxy: image turns route to Anthropic under your PAYG key (cents
+per image, billed to that key — your Claude subscription quota is
+untouched), while everything else stays on the provider. Off by default;
+off ⇒ nothing is proxied. The port is `ccGgBridgy.visionProxyPort`
+(default 4399, shared across windows). Logs route to
+`~/.config/cc-gg-bridgy/vision-proxy.log`.
+
+## Everyday use
+
+### Switching providers
 
 Click the **`⇄`** status-bar item to switch the current project: with two
 providers it flips straight to the other one, with three or more it opens a
 picker showing each provider's 5-hour usage. Then start a **new
 conversation** (the toast offers it) — an open conversation keeps the
 provider it started on, by design. To continue a conversation on the other
-provider, resume it from Claude Code's session list; the transcript carries
-over natively.
+provider, resume it from Claude Code's session list (Claude Code calls a
+saved conversation a *session*); the transcript carries over natively.
 
 ### Switching models (within a provider)
 
@@ -281,31 +234,76 @@ The tiers relabel to the provider's model names (e.g. *Kimi K3 (flagship)*,
 Confirm what's actually serving a turn with **`/status`**, not `/model` — the
 transcript's per-turn `model` field is the ground truth.
 
-**Beam a session to your phone** before stepping away: run
+### Beam a session to your phone (Remote Control)
+
+The extension UI can't enable Anthropic's Remote Control, but the session
+store is shared — so bridgy can hand your active session to a terminal that
+has it. Before stepping away, run
 **`CC-GG-bridgy: Beam session to phone (Remote Control)`** from the command
 palette. Bridgy resumes the project's active session in an integrated
-terminal with `--remote-control`, under the project's provider env (the
-first beam may ask you to pair with your Claude account). The session then
-shows up in the Claude iOS/Android app and at claude.ai/code, mirrored live
-— answer its questions, send the next step, switch models with `/model`. If
-the extension conversation for that session is still open, close it: two
-surfaces replying to one session will fork it.
+terminal as
+`claude --resume <id> --remote-control <name> --permission-mode bypassPermissions`
+— permission prompts bypassed so the away-run doesn't stall on them —
+under the project's provider env (the first beam may ask you to pair with
+your Claude account). The session then shows up in the Claude iOS/Android
+app and at claude.ai/code, mirrored live — answer its questions, send the
+next step, switch models with `/model` — while execution stays on your
+machine. Beaming is busy-gated like the switch. If the extension
+conversation for that session is still open, close it: two surfaces replying
+to one session will fork it. Remote Control itself is an Anthropic research
+preview.
 
 To come back, `/exit` the beamed terminal (Remote Control ends with the
 process), then resume the session from the Claude panel's **local** session
-list — a fresh resume re-reads the whole transcript, phone turns included.
-Don't reopen the old conversation tab: it restores the stale pre-beam head.
+list — a fresh resume re-reads the whole transcript, phone turns included
+(a round trip verified live). Don't reopen the old conversation tab: it
+restores the stale pre-beam head.
 
-Settings: `ccGgBridgy.quietWindowMs` — how long the transcript must be
-silent before a session counts as idle (default 2500 ms).
-`ccGgBridgy.switchToast` — the post-switch notification with the
-[New conversation] shortcut (default on; turn off once the handoff flow is
-muscle memory — the status-bar label change is the confirmation).
-`ccGgBridgy.restartCliOnSwitch` — after a switch, end this window's idle
-Claude Code CLI process so the next conversation respawns under the new
-provider and `/model` shows its tier labels without a window reload
-(default on; the Claude extension otherwise reuses one CLI process per
-window, freezing the old provider's env until reload). Processes backing a
+## Usage readouts
+
+The status item shows every provider's 5-hour **and weekly** windows plus
+the next 5-hour reset, inline:
+
+```text
+⇄ Claude │ C 28%/82% ↻14:00 · G 1%/40% ↻15:30
+```
+
+The tooltip adds plan tiers and reset times. The item takes the warning tint
+when the active provider's 5-hour window passes 80%.
+
+Profiles get a usage adapter picked by their base URL's hostname: z.ai
+profiles query the GLM Coding Plan quota endpoint, kimi.com profiles query
+the Kimi Code usage endpoint (community-documented — parsed defensively,
+degrades to "usage unavailable" on surprises), other endpoints show no
+numbers.
+
+The Claude side defaults to the `rate_limits` payload Claude Code hands to
+statusline scripts, teed to a file (setup step 3) — no credential handling.
+That feed only updates from terminal sessions, so past 30 minutes the
+readout is marked "as of HH:MM" rather than showing a frozen number. With
+**`ccGgBridgy.anthropicLiveUsage`** on (opt-in; macOS only), the Claude side
+instead refreshes the OAuth token from the Keychain and polls the usage
+endpoint directly, so the bar stays fresh in the panel too. It falls back to
+the statusline feed on any miss, and when the refresh token expires it
+auto-prompts a one-click re-login (once per expiry).
+
+## Settings reference
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `ccGgBridgy.quietWindowMs` | `2500` | How long the transcript must be silent before a session counts as idle. |
+| `ccGgBridgy.switchToast` | `true` | Post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation. Turn off once the handoff is muscle memory. |
+| `ccGgBridgy.restartCliOnSwitch` | `true` | After a switch, respawn CLI processes under the new provider — details below. |
+| `ccGgBridgy.anthropicLiveUsage` | `false` | Poll live Claude usage via Keychain OAuth refresh instead of the statusline feed. macOS only; falls back on any miss. |
+| `ccGgBridgy.visionProxy` | `false` | Opt-in localhost proxy routing image-bearing turns to Anthropic pay-as-you-go. Off ⇒ nothing is proxied. |
+| `ccGgBridgy.visionProxyPort` | `4399` | The vision proxy's localhost port (shared across windows). |
+| `ccGgBridgy.visionModel` | `"claude-sonnet-5"` | Claude model for the vision leg; overridable per provider via `CC_GG_BRIDGY_VISION_MODEL` in the env file. |
+
+**`restartCliOnSwitch` in detail:** after a switch, bridgy ends this
+window's idle Claude Code CLI process so the next conversation respawns
+under the new provider and `/model` shows its tier labels without a window
+reload (the Claude extension otherwise reuses one CLI process per window,
+freezing the old provider's env until reload). Processes backing a
 still-open conversation are ended only after that conversation closes, so
 no "process exited" error ever appears in the panel. Open conversations
 move with the switch: bridgy tracks which session each Claude tab hosts
@@ -317,29 +315,63 @@ interrupted — it keeps its old provider until you close it. Tabs bridgy
 could not identify (open since before activation, ambiguous birth) keep
 the old behavior: they move to the new provider when closed and resumed.
 
-`ccGgBridgy.anthropicLiveUsage` — poll live Claude usage directly from the
-usage endpoint instead of the terminal statusline feed (default off; macOS
-only). On any miss it falls back to the statusline feed, shown with a
-staleness age. When the OAuth refresh token expires, run
-**`CC-GG-bridgy: Re-login Anthropic`** (auto-prompted once per expiry) to
-mint a fresh one via `claude login`.
+Palette commands:
 
-`ccGgBridgy.visionProxy` — route image-bearing turns to Anthropic
-pay-as-you-go while keeping text and code on GLM/Kimi (default off). Requires
-`~/.config/cc-gg-bridgy/anthropic-vision.env` with an `ANTHROPIC_API_KEY`. With
-it on, bridgy hosts a localhost proxy that the wrapper routes non-Anthropic
-providers through; off, nothing is proxied. `ccGgBridgy.visionProxyPort` — the
-proxy's localhost port (default 4399, shared across windows).
-`ccGgBridgy.visionModel` — the Claude model used for the vision leg (default
-`claude-sonnet-5`; e.g. `claude-haiku-4-5-20251001` for cheaper vision;
-overridable per provider via `CC_GG_BRIDGY_VISION_MODEL` in the env file). Logs
-route to `~/.config/cc-gg-bridgy/vision-proxy.log`.
+| Command | Title |
+| --- | --- |
+| `cc-gg-bridgy.toggle` | CC-GG-bridgy: Switch provider for this project (Claude ⇄ GLM ⇄ …) |
+| `cc-gg-bridgy.setupWrapper` | CC-GG-bridgy: Configure Claude Code process wrapper |
+| `cc-gg-bridgy.beam` | CC-GG-bridgy: Beam session to phone (Remote Control) |
+| `cc-gg-bridgy.loginAnthropic` | CC-GG-bridgy: Re-login Anthropic (run claude login) |
 
-Debugging: `touch ~/.config/cc-gg-bridgy/debug-on` (or set
-`CC_GG_BRIDGY_DEBUG=1` in the spawn env) makes the shim log its
-argv/cwd/provider decision to `~/.config/cc-gg-bridgy/debug.log`
-(size-capped). `CC_GG_BRIDGY_GLM_ENV` still overrides the glm.env path
-(back-compat from the glm-only era; other profiles have no override).
+## Under the hood
+
+Validated live against Claude Code extension 2.1.220 (see
+[DESIGN.md](DESIGN.md) for the design record and the spike evidence).
+
+- **Process-wrapper shim.** Bridgy points `claudeCode.claudeProcessWrapper`
+  (an official extension setting) at a small POSIX-sh shim. Every time the
+  extension launches a Claude CLI process, the shim reads bridgy's
+  per-project state and either execs the real binary clean (Anthropic) or
+  with that provider's env profile injected. Each new conversation is its
+  own CLI process, which is why the switch applies without a reload. On any
+  doubt (missing state, unreadable config, provider endpoint down) the shim
+  execs the real CLI untouched and the usage rows show the reason instead
+  of erroring.
+- **Per-project state** — `~/.config/cc-gg-bridgy/state.json` maps workspace
+  path → provider name (plus a `default`). `anthropic` is reserved for the
+  clean passthrough; every other name means "inject `<name>.env`". The shim
+  resolves the project from the spawned process's cwd, which is the
+  workspace folder (VS Code's name for a project).
+- **Busy detection** — bridgy finds the project's live session via Claude
+  Code's session registry (`~/.claude/sessions/<pid>.json`), then classifies
+  busy/idle from the transcript tail (including nested subagent activity).
+  Long silent tool runs read as busy — the safe direction — and a 30-minute
+  staleness escape stops a dead session from gating forever.
+- **Tier-label fallback** — a provider profile that omits the
+  `ANTHROPIC_DEFAULT_<TIER>_MODEL[_NAME]` vars inherits them from `glm.env`
+  (the reference mapping) so `/model` shows real names instead of falling
+  through to built-in Anthropic ids. Connection vars are never inherited, and
+  a profile that sets its own tiers (like `kimi.env`) is untouched.
+- **Vision proxy (opt-in)** — when on, bridgy hosts a localhost HTTP server
+  and the wrapper points the CLI at `http://127.0.0.1:<port>/<provider>`
+  instead of the provider directly. The proxy inspects each `/v1/messages`
+  request: an image-bearing turn — or a tool-loop a Claude image turn started
+  — goes to `api.anthropic.com` under a pay-as-you-go key with a Claude model;
+  everything else forwards to the provider verbatim (original auth, untouched).
+  The routing is stateless and only looks at the last message, so a plain text
+  follow-up returns the conversation to GLM immediately. It fails open: no
+  creds, no proxy URL recorded in the state file, or proxy unreachable ⇒ the
+  wrapper injects the provider env directly, so Claude Code never breaks
+  because of it.
+
+## Debugging
+
+`touch ~/.config/cc-gg-bridgy/debug-on` (or set `CC_GG_BRIDGY_DEBUG=1` in
+the spawn env) makes the shim log its argv/cwd/provider decision to
+`~/.config/cc-gg-bridgy/debug.log` (size-capped). `CC_GG_BRIDGY_GLM_ENV`
+still overrides the glm.env path (back-compat from the glm-only era; other
+profiles have no override).
 
 ## Known issues
 
@@ -377,25 +409,25 @@ each fix is provable and regressions are caught before a human notices.
   `analyze_image` tool, which returned one fixed wrong image regardless of
   what you sent (verified against Claude Code 2.1.220). z.ai fixed that tool on
   2026-07-31 (verified on two images), so GLM vision works natively again. The
-  opt-in **`ccGgBridgy.visionProxy`** (with an `anthropic-vision.env`, setup
-  step 5) is kept — off by default — for if z.ai regresses: image turns route
-  to Anthropic pay-as-you-go while text and code stay on GLM, spending no
-  subscription quota. With the proxy off, the other fallback is to switch the
-  project to Anthropic for vision (those turns run on your Claude subscription
-  quota). Re-test GLM vision after a z.ai update.
+  opt-in **`ccGgBridgy.visionProxy`** (with an `anthropic-vision.env`, see
+  [the vision proxy setup](#vision-on-glmkimi-opt-in-proxy)) is kept — off by default
+  — for if z.ai regresses: image turns route to Anthropic pay-as-you-go while
+  text and code stay on GLM, spending no subscription quota. With the proxy
+  off, the other fallback is to switch the project to Anthropic for vision
+  (those turns run on your Claude subscription quota). Re-test GLM vision
+  after a z.ai update.
 - **Kimi: the pay-as-you-go leg is validated live** (Moonshot Open
   Platform endpoint, env contract, model-slot pinning, real CLI turn served
   by `kimi-k3`); the **Kimi Code plan endpoint and its usage readout are
   not yet** — new Kimi Code subscriptions were paused for capacity when
   this shipped. Their endpoint has documented gaps you should expect
-  in-session: WebFetch is
-  broken, Tool Search must stay disabled, prompt caching is Kimi's own
-  implicit kind. `/model` relabels to Kimi names **only in a conversation
-  started under Kimi** (see *Switching models*); an Anthropic-started one
-  keeps Claude names. `/status` is the
-  truth surface. The usage endpoint is community-documented; if its shape
-  shifts, the Kimi column degrades to "usage unavailable" rather than
-  breaking anything.
+  in-session: WebFetch is broken, Tool Search must stay disabled, prompt
+  caching is Kimi's own implicit kind. `/model` relabels to Kimi names
+  **only in a conversation started under Kimi** (see *Switching models*);
+  an Anthropic-started one keeps Claude names. `/status` is the truth
+  surface. The usage endpoint is community-documented; if its shape shifts,
+  the Kimi column degrades to "usage unavailable" rather than breaking
+  anything.
 - **Claude usage freshness rides on terminal use.** The extension UI doesn't
   run statusline scripts, so the Claude column updates when a terminal
   `claude` session makes a turn; past 30 minutes it's marked "as of HH:MM".
@@ -429,8 +461,6 @@ each fix is provable and regressions are caught before a human notices.
 - Button in the Claude panel's title bar beside the status-bar item.
 - Per-session provider badges in the tooltip (from transcript `model`
   fields).
-- (Named env profiles shipped in 0.3.0 — any Anthropic-compatible endpoint
-  via `<name>.env`.)
 
 ## Disclaimer
 

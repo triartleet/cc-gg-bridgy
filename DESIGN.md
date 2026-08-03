@@ -321,6 +321,29 @@ already exists natively.
    state.json's atomic tmp+rename and the key is removed on host shutdown
    (this replaced an earlier standalone `vision-proxy.url` file, folded into
    state.json before 0.6.0 shipped). Amends Non-goal 1 below.
+10. **Live Anthropic usage is READ-ONLY — never refresh the CLI's token**
+    (added 2026-08-03, reverses the refresh half of the 2026-07-29 decision).
+    0.5.0–0.6.0 minted its own access token by sending a `refresh_token` grant
+    to `platform.claude.com/v1/oauth/token`, on the belief — read off the CC
+    2.1.220 bundle — that the refresh token was reusable and non-rotating.
+    **It rotates.** Because the credential belongs to the CLI and not to
+    bridgy, every poll invalidated the CLI's copy, which is what produced the
+    "session expired on GLM stretches" re-logins blamed on natural expiry.
+    A second, independent defect hid the first: the live endpoint returns
+    `utilization` + ISO-8601 `resets_at`, not the tee's `used_percentage` +
+    unix seconds, so the parse always failed and the readout silently fell
+    back to the tee — the feature never once displayed a live number while
+    logging the CLI out in the background.
+    **Now:** read `claudeAiOauth.accessToken` + `expiresAt` from the Keychain
+    (account `claude-code-user` first, unqualified read as fallback so a stray
+    second entry can't win), use it only while unexpired (60 s skew), and
+    otherwise skip the cycle and let the tee answer — the CLI renews its own
+    token on its next turn. No token endpoint, no client_id, no in-memory
+    token cache, no `invalid_grant` prompt. `usageWindow()` now parses both
+    field shapes, so the tee and live paths share one parser.
+    **Invariant:** bridgy is a read-only consumer of another program's
+    credential. Any future feature that would write, refresh, or rotate one
+    is out of bounds without an explicit maintainer decision.
 
 ## Architecture
 
@@ -352,9 +375,10 @@ Components:
   (`~/.config/cc-gg-bridgy/statusline-last.json`, written by a fail-safe
   block in `~/.claude/statusline-command.sh` — snippet in README) →
   `rate_limits.five_hour/seven_day` `used_percentage` + `resets_at` (unix
-  SECONDS). Chosen over the community OAuth usage endpoint after that path
-  401'd live: the Keychain access-token copy rots on this machine, and
-  refreshing it ourselves would touch auth flows (non-goal). Limitation:
+  SECONDS). The opt-in live path (decision 10) reads the same windows from
+  `api.anthropic.com/api/oauth/usage`, where they arrive as `utilization` +
+  ISO-8601 `resets_at` — one parser (`usageWindow`) accepts both shapes.
+  Limitation:
   only TERMINAL sessions run statusline scripts (the extension UI does
   not, verified), and `rate_limits` appears only after a real turn. So the
   readout never pretends a stale feed is live: past 30 min the snapshot is
@@ -611,21 +635,22 @@ Components:
     public posture.
   - **Scoped exception — live Anthropic usage (opt-in `ccGgBridgy.anthropicLiveUsage`,
     off by default):** the statusline feed is terminal-only, so a panel-only user
-    sees stale usage. When enabled, bridgy reads Claude Code's *own* OAuth
-    credential from the macOS Keychain, performs a `refresh_token` grant against
-    `platform.claude.com/v1/oauth/token` (Claude Code's public client_id), and
-    GETs `api.anthropic.com/api/oauth/usage` — the same endpoint + fields Claude
-    Code itself uses. It does NOT proxy/intercept traffic, does NOT persist or
-    rotate credentials (the refresh_token is reusable, verified non-rotating from
-    CC 2.1.220's own code), and fails open to the staled statusline feed on any
-    miss. Decided 2026-07-29 after confirming read-only token use 401s (the
-    persisted access token is expired).
-  - **Re-login is DELEGATED, not reimplemented** (2026-07-30): when the refresh
-    token expires (`invalid_grant`), bridgy does NOT run its own OAuth authorize
-    flow — the `cc-gg-bridgy.loginAnthropic` command (auto-prompted once per
-    expiry) opens a terminal running `claude login` directly (bypassing the
-    wrapper), and Claude Code mints + stores the fresh credential. bridgy writes
-    no credentials, ever; the refresh path reads + refreshes only.
+    sees stale usage. When enabled, bridgy READS the access token Claude Code
+    keeps in the macOS Keychain (service `Claude Code-credentials`, account
+    `claude-code-user`) and GETs `api.anthropic.com/api/oauth/usage` with it —
+    the same endpoint Claude Code itself uses. Strictly read-only: no token
+    endpoint is ever called, no credential is written, and an expired stored
+    token is skipped rather than renewed (decision 10 — refreshing rotates the
+    CLI's credential and logs it out). Fails open to the staled statusline feed
+    on any miss.
+  - **Re-login is DELEGATED, not reimplemented** (2026-07-30, narrowed 2026-08-03):
+    bridgy never runs its own OAuth authorize flow — the
+    `cc-gg-bridgy.loginAnthropic` command opens a terminal running `claude login`
+    directly (bypassing the wrapper), and Claude Code mints + stores the fresh
+    credential. bridgy writes no credentials, ever. The auto-prompt that used to
+    fire on `invalid_grant` is gone with the refresh path (decision 10): bridgy
+    no longer performs the grant that could detect expiry, so re-login is
+    user-initiated via the command.
 - No second chat UI. The official extension remains the only conversation
   surface.
 

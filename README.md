@@ -115,12 +115,14 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
 4. **(Optional) Live Claude usage in the panel.** The statusline feed only
    updates from terminal sessions, so panel-only use shows a staleness age
    instead of a frozen number. To poll usage directly, set
-   **`ccGgBridgy.anthropicLiveUsage: true`** (macOS only). Bridgy reads the
-   Claude Code OAuth credential from the Keychain, refreshes the access token
-   itself, and queries the usage endpoint — no credential handling of yours.
-   When the refresh token eventually expires it prompts a one-click re-login
-   (or run **`CC-GG-bridgy: Re-login Anthropic`**), which runs `claude login`
-   and stores a fresh token bridgy then reads.
+   **`ccGgBridgy.anthropicLiveUsage: true`** (macOS only). Bridgy *reads* the
+   access token Claude Code keeps in the Keychain and queries the usage
+   endpoint with it — read-only, and it never refreshes or writes that
+   credential (refreshing rotates it and would log the CLI out). While the
+   stored token is momentarily expired the readout falls back to the
+   statusline feed until Claude Code renews it on its next turn. If the
+   session itself has lapsed, run **`CC-GG-bridgy: Re-login Anthropic`**,
+   which runs `claude login` and stores a fresh token bridgy then reads.
 5. **(Optional) Vision on GLM/Kimi via the proxy.** See
    [Vision on GLM/Kimi (opt-in proxy)](#vision-on-glmkimi-opt-in-proxy) —
    off by default, and only worth setting up if your provider's gateway
@@ -282,10 +284,12 @@ statusline scripts, teed to a file (setup step 3) — no credential handling.
 That feed only updates from terminal sessions, so past 30 minutes the
 readout is marked "as of HH:MM" rather than showing a frozen number. With
 **`ccGgBridgy.anthropicLiveUsage`** on (opt-in; macOS only), the Claude side
-instead refreshes the OAuth token from the Keychain and polls the usage
-endpoint directly, so the bar stays fresh in the panel too. It falls back to
-the statusline feed on any miss, and when the refresh token expires it
-auto-prompts a one-click re-login (once per expiry).
+instead reads Claude Code's stored access token from the Keychain and polls
+the usage endpoint directly, so the bar stays fresh in the panel too. The
+read is strictly read-only — bridgy never refreshes or rewrites that
+credential, because refreshing rotates it and logs the CLI out. It falls
+back to the statusline feed on any miss, including the windows where the
+stored token is expired and the CLI hasn't yet renewed it.
 
 ## Settings reference
 
@@ -294,7 +298,7 @@ auto-prompts a one-click re-login (once per expiry).
 | `ccGgBridgy.quietWindowMs` | `2500` | How long the transcript must be silent before a session counts as idle. |
 | `ccGgBridgy.switchToast` | `true` | Post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation. Turn off once the handoff is muscle memory. |
 | `ccGgBridgy.restartCliOnSwitch` | `true` | After a switch, respawn CLI processes under the new provider — details below. |
-| `ccGgBridgy.anthropicLiveUsage` | `false` | Poll live Claude usage via Keychain OAuth refresh instead of the statusline feed. macOS only; falls back on any miss. |
+| `ccGgBridgy.anthropicLiveUsage` | `false` | Poll live Claude usage with the access token Claude Code stores in the Keychain (read-only — never refreshed) instead of the statusline feed. macOS only; falls back on any miss. |
 | `ccGgBridgy.visionProxy` | `false` | Opt-in localhost proxy routing image-bearing turns to Anthropic pay-as-you-go. Off ⇒ nothing is proxied. |
 | `ccGgBridgy.visionProxyPort` | `4399` | The vision proxy's localhost port (shared across windows). |
 | `ccGgBridgy.visionModel` | `"claude-sonnet-5"` | Claude model for the vision leg; overridable per provider via `CC_GG_BRIDGY_VISION_MODEL` in the env file. |

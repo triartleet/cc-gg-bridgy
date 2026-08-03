@@ -31,7 +31,7 @@ import {
   setProvider,
   stateDir,
 } from "./state"
-import { currentUsage, formatReset, isAnthropicLoginNeeded, ProviderUsage, refreshUsage } from "./usage"
+import { currentUsage, formatReset, ProviderUsage, refreshUsage } from "./usage"
 import { disposeVisionProxy, syncVisionProxy } from "./visionProxy"
 
 const POLL_MS = 2000
@@ -62,32 +62,9 @@ function refreshUsageNow(): ReturnType<typeof refreshUsage> {
 }
 
 const loginTerms = new Set<vscode.Terminal>()
-let loginPromptShown = false
 
 function onUsageRefreshed(): void {
   refresh()
-  maybePromptLogin()
-}
-
-// When the OAuth refresh token is expired the live read can't self-recover —
-// prompt once per expiry to run Claude Code's own login (which mints a fresh
-// refresh token into the Keychain). The flag clears on a successful refresh,
-// so the next expiry re-prompts.
-function maybePromptLogin(): void {
-  if (!isAnthropicLoginNeeded()) {
-    loginPromptShown = false
-    return
-  }
-  if (loginPromptShown) return
-  loginPromptShown = true
-  void vscode.window
-    .showInformationMessage(
-      "CC-GG-bridgy: Anthropic session expired — re-login to keep usage live.",
-      "Run claude login",
-    )
-    .then((pick) => {
-      if (pick === "Run claude login") void loginAnthropic()
-    })
 }
 
 // Delegate to Claude Code's own login: run `claude` directly in a terminal

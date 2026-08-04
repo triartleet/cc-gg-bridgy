@@ -3,16 +3,27 @@
   // other repositories never inherit them. The global user-settings block owns the preview
   // cosmetics (stylesheet, font, line height, wrap); the rules that produce warnings live here.
   //
-  // referenceLinks is OFF. Measured across the full set of repositories on 2026-08-03: this one rule produced
-  // 301 of 326 warnings and every single one was ordinary bracketed prose — [CRITICAL], [bot],
-  // [--base <branch>], [repair, inflammation]. Zero true positives anywhere. A rule that only
-  // ever cries wolf trains you to ignore the ones that matter, and it was burying them too:
-  // 8 of another project's 10 findings sat below its own 60-line output cap.
+  // These settings are an ADVISORY SUBSET of the push gate, never a second opinion. The gate is
+  // `lychee --include-fragments .` plus the case-exactness guard (a companion decision record); it is a
+  // git hook, so it has always been editor-agnostic and VS Code has never been in that path.
+  //
+  // referenceLinks is OFF so the editor matches the gate. lychee parses real CommonMark, where
+  // an undefined shortcut reference is a text node rather than a link — so it has no such rule
+  // and structurally cannot have one. This is alignment, not a workaround. The rule it replaced
+  // produced 301 of 326 fleet warnings with zero true positives, all ordinary bracketed prose
+  // ([CRITICAL], [bot], [--base <branch>]), and buried real findings beneath them.
   "markdown.validate.referenceLinks.enabled": "ignore",
 
-  // These two stay on — between them they found all 16 real defects in these repositories: links left
-  // behind by a file move, a doubled path prefix, and a fragment pointing at a renumbered
-  // heading. All 16 are now fixed.
+  // These two stay on: they are the editor-side echo of what the gate enforces, and between them
+  // they found all 16 real defects in these repositories — links left behind by a file move, a doubled
+  // path prefix, and a fragment pointing at a renumbered heading. All 16 are fixed.
   "markdown.validate.fileLinks.enabled": "warning",
-  "markdown.validate.fragmentLinks.enabled": "warning"
+  "markdown.validate.fragmentLinks.enabled": "warning",
+
+  // Prettier does not govern this repo's markdown — no format script here covers .md — but
+  // VS Code's user settings set editor.formatOnSave globally and [markdown] defaultFormatter
+  // to Prettier, and prettier.requireConfig is unset (default false), so Prettier would rewrite
+  // these files on save using settings nothing in this repo ever checks. Same line and same
+  // reasoning already applied to other repositories.
+  "[markdown]": { "editor.formatOnSave": false }
 }

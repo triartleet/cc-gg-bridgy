@@ -7,3 +7,15 @@ tsconfig.json
 pnpm-lock.yaml
 pnpm-workspace.yaml
 .gitignore
+
+# Nothing below is needed at runtime, and some of it describes the development
+# machine rather than the extension. vsce does NOT honour .gitignore, so a file
+# ignored by git still ships unless it is named here — .etymd/cache/ held an
+# absolute home path and shipped in 0.4.0 through 0.6.1 for exactly that reason.
+# Verify with `npx @vscode/vsce ls` before every publish.
+.etymd/**
+.githooks/**
+.markdownlint.jsonc
+AGENTS.md
+DECISIONS.md
+*.vsix

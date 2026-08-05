@@ -69,7 +69,7 @@
         "ccGgBridgy.visionProxy": {
           "type": "boolean",
           "default": false,
-          "description": "Opt-in localhost proxy that keeps a project on GLM/Kimi for text and code but routes image-bearing message turns (and the tool-loops they start) to Anthropic pay-as-you-go, where vision actually works. Requires ~/.config/cc-gg-bridgy/anthropic-vision.env (ANTHROPIC_API_KEY + CC_GG_BRIDGY_VISION_MODEL). The wrapper only routes through it while that file and the url file exist; on any failure it falls back to direct provider injection (Claude Code never breaks). Scoped, opt-in exception to the no-proxy stance — see DESIGN.md."
+          "description": "Opt-in localhost proxy that keeps a project on GLM/Kimi for text and code but routes image-bearing message turns (and the tool-loops they start) to Anthropic pay-as-you-go, where vision actually works. Requires ~/.config/cc-gg-bridgy/anthropic-vision.env (ANTHROPIC_API_KEY + CC_GG_BRIDGY_VISION_MODEL). The wrapper only routes through it while that file and the url file exist; on any failure it falls back to direct provider injection (Claude Code never breaks). Scoped, opt-in exception to the no-proxy stance — see DECISIONS.md."
         },
         "ccGgBridgy.visionProxyPort": {
           "type": "number",

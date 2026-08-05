@@ -10,7 +10,7 @@ import { envFileFor, setVisionProxyUrl, stateDir } from "./state"
 // chosen provider (GLM/Kimi/…) for text and code, but routes image-bearing
 // message turns — and the tool-loops they start — to Anthropic pay-as-you-go,
 // where vision actually works. This is a scoped, opt-in EXCEPTION to bridgy's
-// "never proxy traffic" stance (DESIGN.md records the decision); with it off,
+// "never proxy traffic" stance (DECISIONS.md records the decision); with it off,
 // no traffic is proxied and the wrapper injects the provider env directly as
 // always.
 //

@@ -12,7 +12,7 @@ switch (Anthropic ⇄ named env profiles — GLM, Kimi, any Anthropic-compatible
 implemented as a wrapper shim around the Claude binary, plus a status bar with per-provider
 usage readout and a `beam` command that hands the active session to Anthropic Remote Control
 for phone/web reach. Built for daily multi-provider use; published publicly (MIT)
-for anyone on the same setup. `DESIGN.md` is the decision record; `README.md` is the
+for anyone on the same setup. `DECISIONS.md` is the decision record; `README.md` is the
 user-facing guide — keep that split.
 
 ## Stack
@@ -26,8 +26,9 @@ user-facing guide — keep that split.
 - **Reuse-first.** Before writing any new helper/component/type: check the map below and the
   surrounding code — a "new" thing usually exists.
 - **Minimal diffs.** Never touch files outside the task's scope.
-- **DESIGN.md is load-bearing.** Read its "Locked decisions" and "Non-goals" sections before any
-  non-trivial change; do not re-open a locked decision without the maintainer. Core invariants: the
+- **DECISIONS.md is load-bearing.** Read its "Locked decisions", "Failed approaches" and
+  "Non-goals" sections before any non-trivial change; do not re-open a locked decision without
+  the maintainer, and never re-attempt anything under "Failed approaches". Core invariants: the
   wrapper is a fail-open supervisor shim (never a fork, never mutates settings files), the
   toggle switches providers not models (never pin a model), and usage polling must never block.
 - **No test suite.** `pnpm typecheck` and `pnpm build` are the only automated gates; verify

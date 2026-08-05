@@ -331,7 +331,8 @@ Palette commands:
 ## Under the hood
 
 Validated live against Claude Code extension 2.1.220 (see
-[DESIGN.md](DESIGN.md) for the design record and the spike evidence).
+[DECISIONS.md](DECISIONS.md) for the decision record, including the approaches
+that were tried and reverted).
 
 - **Process-wrapper shim.** Bridgy points `claudeCode.claudeProcessWrapper`
   (an official extension setting) at a small POSIX-sh shim. Every time the

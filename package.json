@@ -101,7 +101,9 @@
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:production": "node esbuild.mjs --production",
+    "vscode:prepublish": "npm run build:production"
   },
   "devDependencies": {
     "@types/node": "20.17.17",

@@ -19,3 +19,8 @@ pnpm-workspace.yaml
 AGENTS.md
 DECISIONS.md
 *.vsix
+
+# Belt and braces: `vscode:prepublish` builds without a source map, so this should
+# never match. If a stray map is ever present it must not ship — it is bigger than
+# the bundle it describes and embeds the full TypeScript source.
+**/*.map

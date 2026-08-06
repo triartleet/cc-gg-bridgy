@@ -1,15 +1,15 @@
-# CC-GG-bridgy
+# Gephyra
 
 <div align="center">
-  <img src="media/bridgy-logo.png" width="220" alt="CC-GG-bridgy — a bee with a stinger, ready to switch providers">
+  <img src="media/gephyra-logo.png" width="220" alt="Gephyra — a bee with a stinger, ready to switch providers">
   <p>
-    <a href="https://marketplace.visualstudio.com/items?itemName=alkisyuv.cc-gg-bridgy"><img src="https://img.shields.io/visual-studio-marketplace/v/alkisyuv.cc-gg-bridgy?label=VS%20Marketplace&color=0066b8" alt="VS Marketplace"></a>
-    <a href="https://open-vsx.org/extension/alkisyuv/cc-gg-bridgy"><img src="https://img.shields.io/open-vsx/v/alkisyuv/cc-gg-bridgy?label=Open%20VSX&color=a60ee5" alt="Open VSX"></a>
+    <a href="https://marketplace.visualstudio.com/items?itemName=alkisyuv.gephyra"><img src="https://img.shields.io/visual-studio-marketplace/v/alkisyuv.gephyra?label=VS%20Marketplace&color=0066b8" alt="VS Marketplace"></a>
+    <a href="https://open-vsx.org/extension/alkisyuv/gephyra"><img src="https://img.shields.io/open-vsx/v/alkisyuv/gephyra?label=Open%20VSX&color=a60ee5" alt="Open VSX"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
   </p>
 </div>
 
-One AI subscription answers every project you work on, so they all drain the same allowance — and when you hit the limit, everything stops, whether a project needed the expensive plan or not. CC-GG-bridgy adds a switch to the Claude Code extension in Cursor and VS Code so each project can pick its own provider — the company and subscription that answers your AI requests. The other providers are separate subscriptions you sign up and pay for yourself; bridgy connects them, it doesn't include them. Installing bridgy changes nothing until you accept the one pop-up question it shows and opt a project in. And if it is ever broken, misconfigured, or deleted, Claude Code keeps working as if bridgy were never installed.
+One AI subscription answers every project you work on, so they all drain the same allowance — and when you hit the limit, everything stops, whether a project needed the expensive plan or not. Gephyra adds a switch to the Claude Code extension in Cursor and VS Code so each project can pick its own provider — the company and subscription that answers your AI requests. The other providers are separate subscriptions you sign up and pay for yourself; gephyra connects them, it doesn't include them. Installing gephyra changes nothing until you accept the one pop-up question it shows and opt a project in. And if it is ever broken, misconfigured, or deleted, Claude Code keeps working as if gephyra were never installed.
 
 Works on macOS and Linux (not Windows), alongside the official Claude Code extension.
 
@@ -21,7 +21,7 @@ Your status bar afterwards — one meter per subscription (C = Claude, G = GLM, 
 
 ## Your first switch
 
-1. **Install bridgy and accept the one-time pop-up question** it shows — that single yes is all the setup Claude Code itself needs. If you decline, bridgy does nothing at all. Details in [Install](#install).
+1. **Install gephyra and accept the one-time pop-up question** it shows — that single yes is all the setup Claude Code itself needs. If you decline, gephyra does nothing at all. Details in [Install](#install).
 2. **Add one provider.** [Provider setup](#provider-setup) walks you through it: you copy a short ready-made block into a small text file and paste in the sign-in details the provider gives you — the blocks for z.ai's GLM plan and Moonshot's Kimi plan are ready to copy. Each provider you add becomes one choice on the switch.
 3. **Click the `⇄` item in the status bar and start a new conversation.** That conversation is answered by the provider you just picked — in this project only.
 
@@ -37,47 +37,47 @@ From then on the meter at the bottom of the window shows how much of each subscr
 - **The busy gate** — while an answer is being written, switching waits; forcing it asks you first. → [Everyday use](#everyday-use)
 - **Conversations carry over** — continue any conversation on the other provider from Claude Code's own list of past conversations; nothing is copied. → [Everyday use](#everyday-use)
 - **Beam to phone** — beam is sending an ongoing conversation to your phone while the work keeps running on your computer; it needs the Claude app on your phone, signed in to your Claude account. → [Everyday use](#everyday-use)
-- **Fail-open safety** — bridgy failing can never take Claude Code down with it; the worst case is that the switch quietly does nothing. → [Under the hood](#under-the-hood)
+- **Fail-open safety** — gephyra failing can never take Claude Code down with it; the worst case is that the switch quietly does nothing. → [Under the hood](#under-the-hood)
 
 ## How it works, in plain words
 
 ### Providers and profiles
 
-A provider is the company and subscription that answers your AI requests — Anthropic's Claude plan, z.ai's GLM plan, or Moonshot's Kimi plan. Each is its own paid plan with its own allowance. A profile is a small saved file with the connection details for one provider; each file becomes one choice on the switch. Anthropic needs no file — it is the built-in default that bridgy leaves untouched. GLM and Kimi have ready-made profiles in this guide and their allowance numbers show in the meter; any other Anthropic-compatible service (one that speaks the same request format Claude Code already uses) works too — it just shows no usage numbers. [Provider setup](#provider-setup) walks through creating the files.
+A provider is the company and subscription that answers your AI requests — Anthropic's Claude plan, z.ai's GLM plan, or Moonshot's Kimi plan. Each is its own paid plan with its own allowance. A profile is a small saved file with the connection details for one provider; each file becomes one choice on the switch. Anthropic needs no file — it is the built-in default that gephyra leaves untouched. GLM and Kimi have ready-made profiles in this guide and their allowance numbers show in the meter; any other Anthropic-compatible service (one that speaks the same request format Claude Code already uses) works too — it just shows no usage numbers. [Provider setup](#provider-setup) walks through creating the files.
 
 ### When a switch takes effect
 
-A switch applies to the **next new conversation** you start in the project. Every conversation keeps the provider it started on, so nothing you already have open changes hands mid-thought, and no window reload is ever needed. While an answer is being written, the busy gate blocks switching — bridgy watches the conversation and holds the switch until the response finishes; forcing a switch anyway asks for your confirmation first.
+A switch applies to the **next new conversation** you start in the project. Every conversation keeps the provider it started on, so nothing you already have open changes hands mid-thought, and no window reload is ever needed. While an answer is being written, the busy gate blocks switching — gephyra watches the conversation and holds the switch until the response finishes; forcing a switch anyway asks for your confirmation first.
 
 ### Open conversations move too
 
-When you switch, the open conversations bridgy is tracking close and reopen by themselves under the new provider — same transcript, one brief flicker, and the tab you were on gets focus back. A conversation that is mid-response is never interrupted; it keeps its old provider until you close it. Tabs bridgy could not identify (for example, ones open since before it started) simply move to the new provider once you close and resume them. To continue any conversation on the other provider yourself, resume it from Claude Code's own list of past conversations — the transcript carries over natively, and nothing is copied anywhere.
+When you switch, the open conversations gephyra is tracking close and reopen by themselves under the new provider — same transcript, one brief flicker, and the tab you were on gets focus back. A conversation that is mid-response is never interrupted; it keeps its old provider until you close it. Tabs gephyra could not identify (for example, ones open since before it started) simply move to the new provider once you close and resume them. To continue any conversation on the other provider yourself, resume it from Claude Code's own list of past conversations — the transcript carries over natively, and nothing is copied anywhere.
 
 ### Safe by design
 
-Bridgy is a **supervisor, not a fork** — it doesn't replace or modify the official Claude Code extension; that extension stays untouched and does all the real work. Bridgy only sets one official Claude Code setting and hands the program its connection details when it starts (documented environment variables — nothing hidden). By default it never intercepts your traffic (what you send and receive) and never touches your sign-in. There are two narrow opt-ins, both off by default: the [live Claude usage readout](#usage-readouts) (macOS only) and the [vision fallback proxy](#settings-reference) — a proxy here being a small relay on your own computer that passes your requests along. And bridgy fails open: if it is broken, misconfigured, or deleted, Claude Code keeps working as if bridgy were never installed. The full mechanics are in [Under the hood](#under-the-hood) and the [Disclaimer](#disclaimer).
+Gephyra is a **supervisor, not a fork** — it doesn't replace or modify the official Claude Code extension; that extension stays untouched and does all the real work. Gephyra only sets one official Claude Code setting and hands the program its connection details when it starts (documented environment variables — nothing hidden). By default it never intercepts your traffic (what you send and receive) and never touches your sign-in. There are two narrow opt-ins, both off by default: the [live Claude usage readout](#usage-readouts) (macOS only) and the [vision fallback proxy](#settings-reference) — a proxy here being a small relay on your own computer that passes your requests along. And gephyra fails open: if it is broken, misconfigured, or deleted, Claude Code keeps working as if gephyra were never installed. The full mechanics are in [Under the hood](#under-the-hood) and the [Disclaimer](#disclaimer).
 
 ## Install
 
 From a marketplace:
 
-- **Cursor / VSCodium** — search **"cc-gg-bridgy"** in the Extensions panel
-  (served from [Open VSX](https://open-vsx.org/extension/alkisyuv/cc-gg-bridgy)),
-  or `cursor --install-extension alkisyuv.cc-gg-bridgy`.
+- **Cursor / VSCodium** — search **"gephyra"** in the Extensions panel
+  (served from [Open VSX](https://open-vsx.org/extension/alkisyuv/gephyra)),
+  or `cursor --install-extension alkisyuv.gephyra`.
 - **VS Code** — install from the
-  [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=alkisyuv.cc-gg-bridgy),
-  or `code --install-extension alkisyuv.cc-gg-bridgy`.
+  [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=alkisyuv.gephyra),
+  or `code --install-extension alkisyuv.gephyra`.
 
 Or build from source:
 
 ```bash
-git clone https://github.com/triartleet/cc-gg-bridgy
-cd cc-gg-bridgy
+git clone https://github.com/triartleet/gephyra
+cd gephyra
 pnpm install
 pnpm build
 pnpm dlx @vscode/vsce package --no-dependencies
 # Cursor:
-cursor --install-extension cc-gg-bridgy-*.vsix   # or: code --install-extension …
+cursor --install-extension gephyra-*.vsix   # or: code --install-extension …
 ```
 
 Requires the official **Claude Code** extension, macOS or Linux (the shim is
@@ -85,25 +85,25 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
 
 ## Setup
 
-1. **Configure the wrapper.** On first activation bridgy offers to point
+1. **Configure the wrapper.** On first activation gephyra offers to point
    `claudeCode.claudeProcessWrapper` at its shim (a stable copy under
-   `~/.config/cc-gg-bridgy/`, refreshed automatically on every activation).
-   Decline and bridgy stays inert. This is a **global** setting — every
+   `~/.config/gephyra/`, refreshed automatically on every activation).
+   Decline and gephyra stays inert. This is a **global** setting — every
    window routes CLI spawns through the shim; on the Anthropic default the
    shim is a pure passthrough.
-2. **Add provider profiles.** Create `~/.config/cc-gg-bridgy/<name>.env`
+2. **Add provider profiles.** Create `~/.config/gephyra/<name>.env`
    files — see [Provider setup](#provider-setup) for the documented `glm.env`
    and `kimi.env` blocks. Each file becomes a provider in the switch; no
    files → the switch reports there's nothing to switch to.
 3. **(Optional) Feed the Claude usage readout.** Claude Code only hands
-   `rate_limits` to statusline scripts, so bridgy reads a tee of that
+   `rate_limits` to statusline scripts, so gephyra reads a tee of that
    payload. If you use a custom statusline, add this after it reads stdin
    (fail-safe — it can never break the status line itself):
 
    ```bash
    # after: input=$(cat)
    {
-     bridgy_dir="$HOME/.config/cc-gg-bridgy"
+     bridgy_dir="$HOME/.config/gephyra"
      mkdir -p "$bridgy_dir" &&
        printf '%s' "$input" >"$bridgy_dir/statusline-last.json.tmp" &&
        mv -f "$bridgy_dir/statusline-last.json.tmp" "$bridgy_dir/statusline-last.json"
@@ -115,14 +115,14 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
 4. **(Optional) Live Claude usage in the panel.** The statusline feed only
    updates from terminal sessions, so panel-only use shows a staleness age
    instead of a frozen number. To poll usage directly, set
-   **`ccGgBridgy.anthropicLiveUsage: true`** (macOS only). Bridgy *reads* the
+   **`gephyra.anthropicLiveUsage: true`** (macOS only). Gephyra *reads* the
    access token Claude Code keeps in the Keychain and queries the usage
    endpoint with it — read-only, and it never refreshes or writes that
    credential (refreshing rotates it and would log the CLI out). While the
    stored token is momentarily expired the readout falls back to the
    statusline feed until Claude Code renews it on its next turn. If the
-   session itself has lapsed, run **`CC-GG-bridgy: Re-login Anthropic`**,
-   which runs `claude login` and stores a fresh token bridgy then reads.
+   session itself has lapsed, run **`Gephyra: Re-login Anthropic`**,
+   which runs `claude login` and stores a fresh token gephyra then reads.
 5. **(Optional) Vision on GLM/Kimi via the proxy.** See
    [Vision on GLM/Kimi (opt-in proxy)](#vision-on-glmkimi-opt-in-proxy) —
    off by default, and only worth setting up if your provider's gateway
@@ -130,7 +130,7 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
 
 ## Provider setup
 
-Profiles live at `~/.config/cc-gg-bridgy/<name>.env` — strict `KEY=value`
+Profiles live at `~/.config/gephyra/<name>.env` — strict `KEY=value`
 lines, parsed not sourced, never committed anywhere.
 
 ### GLM (z.ai Coding Plan)
@@ -170,7 +170,7 @@ ENABLE_TOOL_SEARCH=false
 
 ### Any other Anthropic-compatible endpoint
 
-Any `~/.config/cc-gg-bridgy/<name>.env` file is a provider — drop the file
+Any `~/.config/gephyra/<name>.env` file is a provider — drop the file
 and it appears in the switch. Same rules: strict `KEY=value`, parsed not
 sourced, never committed. Unknown endpoints work fully but show no usage
 numbers in the status bar. A profile that omits the model-tier vars inherits
@@ -185,23 +185,23 @@ Some provider gateways mangle pasted images — z.ai GLM did in mid-2026
 This proxy is the fallback for if that regresses, or for another provider
 that mangles images: to keep text and code on GLM while routing image turns
 to Anthropic, put a pay-as-you-go Anthropic key in
-`~/.config/cc-gg-bridgy/anthropic-vision.env`:
+`~/.config/gephyra/anthropic-vision.env`:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-your-payg-key
 # optional — override the vision model from the setting:
-# CC_GG_BRIDGY_VISION_MODEL=claude-haiku-4-5-20251001
+# GEPHYRA_VISION_MODEL=claude-haiku-4-5-20251001
 ```
 
-then set **`ccGgBridgy.visionProxy: true`**. The vision model is the
-**`ccGgBridgy.visionModel`** setting (default `claude-sonnet-5`; set it to
-e.g. `claude-haiku-4-5-20251001` for cheaper vision). Bridgy starts a
+then set **`gephyra.visionProxy: true`**. The vision model is the
+**`gephyra.visionModel`** setting (default `claude-sonnet-5`; set it to
+e.g. `claude-haiku-4-5-20251001` for cheaper vision). Gephyra starts a
 localhost proxy: image turns route to Anthropic under your PAYG key (cents
 per image, billed to that key — your Claude subscription quota is
 untouched), while everything else stays on the provider. Off by default;
-off ⇒ nothing is proxied. The port is `ccGgBridgy.visionProxyPort`
+off ⇒ nothing is proxied. The port is `gephyra.visionProxyPort`
 (default 4399, shared across windows). Logs route to
-`~/.config/cc-gg-bridgy/vision-proxy.log`.
+`~/.config/gephyra/vision-proxy.log`.
 
 ## Everyday use
 
@@ -239,10 +239,10 @@ transcript's per-turn `model` field is the ground truth.
 ### Beam a session to your phone (Remote Control)
 
 The extension UI can't enable Anthropic's Remote Control, but the session
-store is shared — so bridgy can hand your active session to a terminal that
+store is shared — so gephyra can hand your active session to a terminal that
 has it. Before stepping away, run
-**`CC-GG-bridgy: Beam session to phone (Remote Control)`** from the command
-palette. Bridgy resumes the project's active session in an integrated
+**`Gephyra: Beam session to phone (Remote Control)`** from the command
+palette. Gephyra resumes the project's active session in an integrated
 terminal as
 `claude --resume <id> --remote-control <name> --permission-mode bypassPermissions`
 — permission prompts bypassed so the away-run doesn't stall on them —
@@ -283,10 +283,10 @@ The Claude side defaults to the `rate_limits` payload Claude Code hands to
 statusline scripts, teed to a file (setup step 3) — no credential handling.
 That feed only updates from terminal sessions, so past 30 minutes the
 readout is marked "as of HH:MM" rather than showing a frozen number. With
-**`ccGgBridgy.anthropicLiveUsage`** on (opt-in; macOS only), the Claude side
+**`gephyra.anthropicLiveUsage`** on (opt-in; macOS only), the Claude side
 instead reads Claude Code's stored access token from the Keychain and polls
 the usage endpoint directly, so the bar stays fresh in the panel too. The
-read is strictly read-only — bridgy never refreshes or rewrites that
+read is strictly read-only — gephyra never refreshes or rewrites that
 credential, because refreshing rotates it and logs the CLI out. It falls
 back to the statusline feed on any miss, including the windows where the
 stored token is expired and the CLI hasn't yet renewed it.
@@ -295,27 +295,27 @@ stored token is expired and the CLI hasn't yet renewed it.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `ccGgBridgy.quietWindowMs` | `2500` | How long the transcript must be silent before a session counts as idle. |
-| `ccGgBridgy.switchToast` | `true` | Post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation. Turn off once the handoff is muscle memory. |
-| `ccGgBridgy.restartCliOnSwitch` | `true` | After a switch, respawn CLI processes under the new provider — details below. |
-| `ccGgBridgy.anthropicLiveUsage` | `false` | Poll live Claude usage with the access token Claude Code stores in the Keychain (read-only — never refreshed) instead of the statusline feed. macOS only; falls back on any miss. |
-| `ccGgBridgy.visionProxy` | `false` | Opt-in localhost proxy routing image-bearing turns to Anthropic pay-as-you-go. Off ⇒ nothing is proxied. |
-| `ccGgBridgy.visionProxyPort` | `4399` | The vision proxy's localhost port (shared across windows). |
-| `ccGgBridgy.visionModel` | `"claude-sonnet-5"` | Claude model for the vision leg; overridable per provider via `CC_GG_BRIDGY_VISION_MODEL` in the env file. |
+| `gephyra.quietWindowMs` | `2500` | How long the transcript must be silent before a session counts as idle. |
+| `gephyra.switchToast` | `true` | Post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation. Turn off once the handoff is muscle memory. |
+| `gephyra.restartCliOnSwitch` | `true` | After a switch, respawn CLI processes under the new provider — details below. |
+| `gephyra.anthropicLiveUsage` | `false` | Poll live Claude usage with the access token Claude Code stores in the Keychain (read-only — never refreshed) instead of the statusline feed. macOS only; falls back on any miss. |
+| `gephyra.visionProxy` | `false` | Opt-in localhost proxy routing image-bearing turns to Anthropic pay-as-you-go. Off ⇒ nothing is proxied. |
+| `gephyra.visionProxyPort` | `4399` | The vision proxy's localhost port (shared across windows). |
+| `gephyra.visionModel` | `"claude-sonnet-5"` | Claude model for the vision leg; overridable per provider via `GEPHYRA_VISION_MODEL` in the env file. |
 
-**`restartCliOnSwitch` in detail:** after a switch, bridgy ends this
+**`restartCliOnSwitch` in detail:** after a switch, gephyra ends this
 window's idle Claude Code CLI process so the next conversation respawns
 under the new provider and `/model` shows its tier labels without a window
 reload (the Claude extension otherwise reuses one CLI process per window,
 freezing the old provider's env until reload). Processes backing a
 still-open conversation are ended only after that conversation closes, so
 no "process exited" error ever appears in the panel. Open conversations
-move with the switch: bridgy tracks which session each Claude tab hosts
+move with the switch: gephyra tracks which session each Claude tab hosts
 and, on switch, closes and reopens every tracked tab on its own session —
 fresh spawns under the new provider, `/model` tiers correct immediately,
 each tab back in its original column with focus returning to the one you
 were on (tabs flicker once). A conversation that is mid-response is never
-interrupted — it keeps its old provider until you close it. Tabs bridgy
+interrupted — it keeps its old provider until you close it. Tabs gephyra
 could not identify (open since before activation, ambiguous birth) keep
 the old behavior: they move to the new provider when closed and resumed.
 
@@ -323,10 +323,10 @@ Palette commands:
 
 | Command | Title |
 | --- | --- |
-| `cc-gg-bridgy.toggle` | CC-GG-bridgy: Switch provider for this project (Claude ⇄ GLM ⇄ …) |
-| `cc-gg-bridgy.setupWrapper` | CC-GG-bridgy: Configure Claude Code process wrapper |
-| `cc-gg-bridgy.beam` | CC-GG-bridgy: Beam session to phone (Remote Control) |
-| `cc-gg-bridgy.loginAnthropic` | CC-GG-bridgy: Re-login Anthropic (run claude login) |
+| `gephyra.toggle` | Gephyra: Switch provider for this project (Claude ⇄ GLM ⇄ …) |
+| `gephyra.setupWrapper` | Gephyra: Configure Claude Code process wrapper |
+| `gephyra.beam` | Gephyra: Beam session to phone (Remote Control) |
+| `gephyra.loginAnthropic` | Gephyra: Re-login Anthropic (run claude login) |
 
 ## Under the hood
 
@@ -334,21 +334,21 @@ Validated live against Claude Code extension 2.1.220 (see
 [DECISIONS.md](DECISIONS.md) for the decision record, including the approaches
 that were tried and reverted).
 
-- **Process-wrapper shim.** Bridgy points `claudeCode.claudeProcessWrapper`
+- **Process-wrapper shim.** Gephyra points `claudeCode.claudeProcessWrapper`
   (an official extension setting) at a small POSIX-sh shim. Every time the
-  extension launches a Claude CLI process, the shim reads bridgy's
+  extension launches a Claude CLI process, the shim reads gephyra's
   per-project state and either execs the real binary clean (Anthropic) or
   with that provider's env profile injected. Each new conversation is its
   own CLI process, which is why the switch applies without a reload. On any
   doubt (missing state, unreadable config, provider endpoint down) the shim
   execs the real CLI untouched and the usage rows show the reason instead
   of erroring.
-- **Per-project state** — `~/.config/cc-gg-bridgy/state.json` maps workspace
+- **Per-project state** — `~/.config/gephyra/state.json` maps workspace
   path → provider name (plus a `default`). `anthropic` is reserved for the
   clean passthrough; every other name means "inject `<name>.env`". The shim
   resolves the project from the spawned process's cwd, which is the
   workspace folder (VS Code's name for a project).
-- **Busy detection** — bridgy finds the project's live session via Claude
+- **Busy detection** — gephyra finds the project's live session via Claude
   Code's session registry (`~/.claude/sessions/<pid>.json`), then classifies
   busy/idle from the transcript tail (including nested subagent activity).
   Long silent tool runs read as busy — the safe direction — and a 30-minute
@@ -358,7 +358,7 @@ that were tried and reverted).
   (the reference mapping) so `/model` shows real names instead of falling
   through to built-in Anthropic ids. Connection vars are never inherited, and
   a profile that sets its own tiers (like `kimi.env`) is untouched.
-- **Vision proxy (opt-in)** — when on, bridgy hosts a localhost HTTP server
+- **Vision proxy (opt-in)** — when on, gephyra hosts a localhost HTTP server
   and the wrapper points the CLI at `http://127.0.0.1:<port>/<provider>`
   instead of the provider directly. The proxy inspects each `/v1/messages`
   request: an image-bearing turn — or a tool-loop a Claude image turn started
@@ -372,9 +372,9 @@ that were tried and reverted).
 
 ## Debugging
 
-`touch ~/.config/cc-gg-bridgy/debug-on` (or set `CC_GG_BRIDGY_DEBUG=1` in
+`touch ~/.config/gephyra/debug-on` (or set `GEPHYRA_DEBUG=1` in
 the spawn env) makes the shim log its argv/cwd/provider decision to
-`~/.config/cc-gg-bridgy/debug.log` (size-capped). `CC_GG_BRIDGY_GLM_ENV`
+`~/.config/gephyra/debug.log` (size-capped). `GEPHYRA_GLM_ENV`
 still overrides the glm.env path (back-compat from the glm-only era; other
 profiles have no override).
 
@@ -407,14 +407,14 @@ each fix is provable and regressions are caught before a human notices.
 
 - **A fresh GLM conversation may open on the small/fast model slot** (e.g.
   `glm-4.7`) depending on the panel's sticky model choice — check `/model`
-  after switching. Bridgy deliberately never touches model choice.
+  after switching. Gephyra deliberately never touches model choice.
 - **GLM image input was broken (z.ai-side) — repaired upstream 2026-07-31;
   opt-in vision proxy retained as a fallback.** In mid-2026 z.ai's gateway
   converted an attached image to a hosted URL and routed it through its own
   `analyze_image` tool, which returned one fixed wrong image regardless of
   what you sent (verified against Claude Code 2.1.220). z.ai fixed that tool on
   2026-07-31 (verified on two images), so GLM vision works natively again. The
-  opt-in **`ccGgBridgy.visionProxy`** (with an `anthropic-vision.env`, see
+  opt-in **`gephyra.visionProxy`** (with an `anthropic-vision.env`, see
   [the vision proxy setup](#vision-on-glmkimi-opt-in-proxy)) is kept — off by default
   — for if z.ai regresses: image turns route to Anthropic pay-as-you-go while
   text and code stay on GLM, spending no subscription quota. With the proxy
@@ -446,7 +446,7 @@ each fix is provable and regressions are caught before a human notices.
   research preview tied to your Claude account login, and it is disabled by
   the CLI whenever `ANTHROPIC_BASE_URL` is set — so a beamed GLM or Kimi
   session runs as a normal local terminal session without phone reach.
-  Bridgy never flips the "Enable Remote Control for all sessions" setting —
+  Gephyra never flips the "Enable Remote Control for all sessions" setting —
   ambient reach for plain terminal sessions stays your own `/config` choice.
 - **Closed-source churn.** Anthropic can change the wrapper setting or spawn
   path in any release (the extension auto-updates). The shim fails open, so
@@ -469,12 +469,12 @@ each fix is provable and regressions are caught before a human notices.
 
 ## Disclaimer
 
-Not affiliated with Anthropic, Z.ai, or Moonshot AI. By default bridgy never
+Not affiliated with Anthropic, Z.ai, or Moonshot AI. By default gephyra never
 proxies or intercepts provider traffic and never touches OAuth flows — it only
 sets an official extension setting and injects documented environment
 variables, so each provider is consumed exactly as its subscription intends.
 The one scoped exception is the opt-in vision proxy
-(`ccGgBridgy.visionProxy`, off by default): when enabled it runs a localhost
+(`gephyra.visionProxy`, off by default): when enabled it runs a localhost
 pass-through that forwards your own traffic verbatim to your configured
 provider, redirecting only image-bearing turns to Anthropic under a
 pay-as-you-go key you provide — it rewrites nothing but the model field on

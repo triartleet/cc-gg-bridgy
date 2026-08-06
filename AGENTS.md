@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Operating contract for AI agents working in **cc-gg-bridgy**. One source of truth — most agents
+Operating contract for AI agents working in **gephyra**. One source of truth — most agents
 (Claude Code, Codex, Cursor, Copilot, Gemini, …) read this file natively. Kept true by
 [etymd](https://www.npmjs.com/package/etymd): the commands, paths, and claims below are audited
 against the actual repo — update this file when the repo changes, or `etymd audit` will tell you.

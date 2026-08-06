@@ -1,9 +1,15 @@
-import * as vscode from "vscode"
-import * as fs from "node:fs"
-import * as os from "node:os"
-import * as path from "node:path"
-import { classify, resolveActiveSession } from "./busy"
-import { ANTHROPIC, displayName, envFileFor, Provider, providerFor } from "./state"
+import * as vscode from "vscode";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { classify, resolveActiveSession } from "./busy";
+import {
+  ANTHROPIC,
+  displayName,
+  envFileFor,
+  Provider,
+  providerFor,
+} from "./state";
 
 // Beam = resume this project's active session in an integrated terminal with
 // Remote Control enabled, so it becomes controllable from the Claude apps
@@ -16,65 +22,68 @@ import { ANTHROPIC, displayName, envFileFor, Provider, providerFor } from "./sta
 // the shell shim enforces. Terminal spawns bypass the wrapper, so beam must
 // inject the provider env itself.
 function profileEnv(provider: Provider): Record<string, string> | null {
-  let raw: string
+  let raw: string;
   try {
-    raw = fs.readFileSync(envFileFor(provider), "utf8")
+    raw = fs.readFileSync(envFileFor(provider), "utf8");
   } catch {
-    return null
+    return null;
   }
-  const env: Record<string, string> = {}
+  const env: Record<string, string> = {};
   for (const line of raw.split("\n")) {
-    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/)
-    if (m) env[m[1]] = m[2]
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m) env[m[1]] = m[2];
   }
-  return Object.keys(env).length > 0 ? env : null
+  return Object.keys(env).length > 0 ? env : null;
 }
 
-const quote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`
+const quote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
 
 export async function beam(ws: string, quietWindowMs: number): Promise<void> {
-  const active = resolveActiveSession(ws)
+  const active = resolveActiveSession(ws);
   if (!active) {
     void vscode.window.showWarningMessage(
-      "CC-GG-bridgy: no Claude Code session found for this workspace yet — nothing to beam.",
-    )
-    return
+      "Gephyra: no Claude Code session found for this workspace yet — nothing to beam.",
+    );
+    return;
   }
   if (classify(ws, quietWindowMs) === "busy") {
     const force = await vscode.window.showWarningMessage(
       "A Claude Code response may still be in flight. Beaming resumes this session in a second process — beam anyway?",
       { modal: true },
       "Beam anyway",
-    )
-    if (force !== "Beam anyway") return
+    );
+    if (force !== "Beam anyway") return;
   }
 
-  const provider = providerFor(ws)
-  let env: Record<string, string> | undefined
+  const provider = providerFor(ws);
+  let env: Record<string, string> | undefined;
   if (provider !== ANTHROPIC) {
-    env = profileEnv(provider) ?? undefined
+    env = profileEnv(provider) ?? undefined;
     if (!env) {
       void vscode.window.showWarningMessage(
-        `CC-GG-bridgy: this project is on ${displayName(provider)} but ${provider}.env is missing — a beam now would run on Anthropic. Fix ${provider}.env first.`,
-      )
-      return
+        `Gephyra: this project is on ${displayName(provider)} but ${provider}.env is missing — a beam now would run on Anthropic. Fix ${provider}.env first.`,
+      );
+      return;
     }
   }
 
-  const name = path.basename(ws)
+  const name = path.basename(ws);
   const terminal = vscode.window.createTerminal({
-    name: provider !== ANTHROPIC ? `Beam (${displayName(provider)}): ${name}` : `Beam: ${name}`,
+    name:
+      provider !== ANTHROPIC
+        ? `Beam (${displayName(provider)}): ${name}`
+        : `Beam: ${name}`,
     cwd: ws,
     env,
-  })
-  terminal.show()
+  });
+  terminal.show();
   terminal.sendText(
     `claude --resume ${quote(active.sessionId)} --remote-control ${quote(name)} --permission-mode bypassPermissions`,
     true,
-  )
+  );
   void vscode.window.showInformationMessage(
     active.live
       ? `Beamed ${name} — control it from the Claude app or claude.ai/code. The extension conversation still holds this session: close it, and don't reply from both surfaces.`
       : `Beamed ${name} — control it from the Claude app or claude.ai/code.`,
-  )
+  );
 }

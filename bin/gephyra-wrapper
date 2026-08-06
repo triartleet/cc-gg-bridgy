@@ -1,5 +1,5 @@
 #!/bin/sh
-# CC-GG-bridgy shim for claudeCode.claudeProcessWrapper.
+# Gephyra shim for claudeCode.claudeProcessWrapper.
 # Contract (verified, ext 2.1.220): the Claude extension launches THIS
 # executable with the real CLI as argv[1] — the bundled native-binary path,
 # or [node, cli.js] when that fallback is in play — followed by the CLI
@@ -8,19 +8,25 @@
 
 set -u
 
-CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"
+# Resolve the config directory the same way the extension does: the current
+# name wins, the pre-rename directory is used while it is the only one present.
+# The two MUST agree — the extension writes state.json and this shim reads it.
+CONFIG_DIR="${HOME}/.config/gephyra"
+if [ ! -d "${CONFIG_DIR}" ] && [ -d "${HOME}/.config/cc-gg-bridgy" ]; then
+  CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"
+fi
 STATE_FILE="${CONFIG_DIR}/state.json"
 DEBUG_LOG="${CONFIG_DIR}/debug.log"
 # The extension's spawn env is not injectable from outside, so a flag FILE
 # also enables debug; an explicit env value (even 0) still wins.
-if [ -z "${CC_GG_BRIDGY_DEBUG:-}" ] && [ -f "${CONFIG_DIR}/debug-on" ]; then
-  CC_GG_BRIDGY_DEBUG=1
+if [ -z "${GEPHYRA_DEBUG:-}" ] && [ -f "${CONFIG_DIR}/debug-on" ]; then
+  GEPHYRA_DEBUG=1
 fi
 # Extension stores realpath'd project keys; compare against the physical cwd.
 PWD_REAL="$(pwd -P)"
 
 debug() {
-  [ "${CC_GG_BRIDGY_DEBUG:-0}" = "1" ] || return 0
+  [ "${GEPHYRA_DEBUG:-0}" = "1" ] || return 0
   mkdir -p "$CONFIG_DIR"
   if [ -f "$DEBUG_LOG" ] && [ "$(wc -c <"$DEBUG_LOG")" -gt 524288 ]; then
     : >"$DEBUG_LOG"
@@ -134,8 +140,8 @@ debug "provider=$PROVIDER argv=$*"
 if [ "$PROVIDER" != "anthropic" ]; then
   ENV_FILE="${CONFIG_DIR}/${PROVIDER}.env"
   # Back-compat override from the glm-only era.
-  if [ "$PROVIDER" = "glm" ] && [ -n "${CC_GG_BRIDGY_GLM_ENV:-}" ]; then
-    ENV_FILE="$CC_GG_BRIDGY_GLM_ENV"
+  if [ "$PROVIDER" = "glm" ] && [ -n "${GEPHYRA_GLM_ENV:-}" ]; then
+    ENV_FILE="$GEPHYRA_GLM_ENV"
   fi
   if [ -f "$ENV_FILE" ]; then
     load_env_file "$ENV_FILE"
@@ -190,5 +196,5 @@ if [ -n "$CLI" ]; then
   exec "$CLI" "$@"
 fi
 
-echo "cc-gg-wrapper: no Claude CLI found" >&2
+echo "gephyra-wrapper: no Claude CLI found" >&2
 exit 127

@@ -1,27 +1,32 @@
-import * as fs from "node:fs"
-import * as os from "node:os"
-import * as path from "node:path"
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
-export type SessionActivity = "idle" | "busy" | "no-session"
+export type SessionActivity = "idle" | "busy" | "no-session";
 
 // Nothing written for this long = the session is dead, whatever the tail says.
-const STALE_MS = 30 * 60 * 1000
+const STALE_MS = 30 * 60 * 1000;
 
 // Claude Code's project-slug rule: every non-alphanumeric character becomes "-".
 export function projectSlug(projectPath: string): string {
-  return projectPath.replace(/[^a-zA-Z0-9]/g, "-")
+  return projectPath.replace(/[^a-zA-Z0-9]/g, "-");
 }
 
 export function sessionDirFor(projectPath: string): string {
-  return path.join(os.homedir(), ".claude", "projects", projectSlug(projectPath))
+  return path.join(
+    os.homedir(),
+    ".claude",
+    "projects",
+    projectSlug(projectPath),
+  );
 }
 
 function pidAlive(pid: number): boolean {
   try {
-    process.kill(pid, 0)
-    return true
+    process.kill(pid, 0);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -29,138 +34,148 @@ function pidAlive(pid: number): boolean {
 // (identity only, no status field) — the authoritative way to find WHICH
 // session serves this project, instead of guessing by newest mtime.
 function liveSessionIds(projectPath: string): string[] {
-  const dir = path.join(os.homedir(), ".claude", "sessions")
-  const ids: string[] = []
-  let entries: string[]
+  const dir = path.join(os.homedir(), ".claude", "sessions");
+  const ids: string[] = [];
+  let entries: string[];
   try {
-    entries = fs.readdirSync(dir)
+    entries = fs.readdirSync(dir);
   } catch {
-    return ids
+    return ids;
   }
   for (const name of entries) {
-    if (!name.endsWith(".json")) continue
+    if (!name.endsWith(".json")) continue;
     try {
-      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"))
-      if (rec.cwd === projectPath && rec.sessionId && pidAlive(rec.pid)) ids.push(rec.sessionId)
+      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+      if (rec.cwd === projectPath && rec.sessionId && pidAlive(rec.pid))
+        ids.push(rec.sessionId);
     } catch {
-      continue
+      continue;
     }
   }
-  return ids
+  return ids;
 }
 
 // The live-session registry, pid → identity: a registered pid backs an OPEN
 // conversation view somewhere; cwd says which project it belongs to.
 export interface RegisteredSession {
-  cwd: string
-  sessionId: string
+  cwd: string;
+  sessionId: string;
   // Epoch ms of the spawn — the tab tracker pairs tab events to sessions by
   // comparing this against tab-open timestamps.
-  startedAt: number
-  entrypoint: string
+  startedAt: number;
+  entrypoint: string;
 }
 
 export function registeredSessions(): Map<number, RegisteredSession> {
-  const dir = path.join(os.homedir(), ".claude", "sessions")
-  const sessions = new Map<number, RegisteredSession>()
-  let entries: string[]
+  const dir = path.join(os.homedir(), ".claude", "sessions");
+  const sessions = new Map<number, RegisteredSession>();
+  let entries: string[];
   try {
-    entries = fs.readdirSync(dir)
+    entries = fs.readdirSync(dir);
   } catch {
-    return sessions
+    return sessions;
   }
   for (const name of entries) {
-    if (!name.endsWith(".json")) continue
+    if (!name.endsWith(".json")) continue;
     try {
-      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"))
-      if (typeof rec.pid === "number" && typeof rec.cwd === "string" && rec.sessionId)
+      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+      if (
+        typeof rec.pid === "number" &&
+        typeof rec.cwd === "string" &&
+        rec.sessionId
+      )
         sessions.set(rec.pid, {
           cwd: rec.cwd,
           sessionId: String(rec.sessionId),
           startedAt: typeof rec.startedAt === "number" ? rec.startedAt : 0,
           entrypoint: typeof rec.entrypoint === "string" ? rec.entrypoint : "",
-        })
+        });
     } catch {
-      continue
+      continue;
     }
   }
-  return sessions
+  return sessions;
 }
 
 // Pids in the live-session registry for a specific project — the set of
 // processes backing open conversation views in THIS workspace.
 export function registeredSessionPidsFor(projectPath: string): Set<number> {
-  const dir = path.join(os.homedir(), ".claude", "sessions")
-  const pids = new Set<number>()
-  const wsKey = projectPath.replace(/[^a-zA-Z0-9]/g, "-")
-  let entries: string[]
+  const dir = path.join(os.homedir(), ".claude", "sessions");
+  const pids = new Set<number>();
+  const wsKey = projectPath.replace(/[^a-zA-Z0-9]/g, "-");
+  let entries: string[];
   try {
-    entries = fs.readdirSync(dir)
+    entries = fs.readdirSync(dir);
   } catch {
-    return pids
+    return pids;
   }
   for (const name of entries) {
-    if (!name.endsWith(".json")) continue
+    if (!name.endsWith(".json")) continue;
     try {
-      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"))
+      const rec = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
       if (typeof rec.pid === "number" && rec.entrypoint === "claude-vscode") {
         // The registry records `cwd` as the original workspace path, not the slug
-        if (rec.cwd === projectPath || rec.cwd.replace(/[^a-zA-Z0-9]/g, "-") === wsKey)
-          pids.add(rec.pid)
+        if (
+          rec.cwd === projectPath ||
+          rec.cwd.replace(/[^a-zA-Z0-9]/g, "-") === wsKey
+        )
+          pids.add(rec.pid);
       }
     } catch {
-      continue
+      continue;
     }
   }
-  return pids
+  return pids;
 }
 
 // Subagent/workflow activity lands in nested per-session directories, not the
 // top-level transcript — a busy signal must include them.
 function newestMtimeUnder(root: string, depth: number): number {
-  if (depth < 0) return 0
-  let newest = 0
-  let entries: fs.Dirent[]
+  if (depth < 0) return 0;
+  let newest = 0;
+  let entries: fs.Dirent[];
   try {
-    entries = fs.readdirSync(root, { withFileTypes: true })
+    entries = fs.readdirSync(root, { withFileTypes: true });
   } catch {
-    return 0
+    return 0;
   }
   for (const e of entries) {
-    const full = path.join(root, e.name)
+    const full = path.join(root, e.name);
     if (e.isDirectory()) {
-      newest = Math.max(newest, newestMtimeUnder(full, depth - 1))
+      newest = Math.max(newest, newestMtimeUnder(full, depth - 1));
     } else if (e.name.endsWith(".jsonl")) {
       try {
-        newest = Math.max(newest, fs.statSync(full).mtimeMs)
+        newest = Math.max(newest, fs.statSync(full).mtimeMs);
       } catch {
         /* raced deletion */
       }
     }
   }
-  return newest
+  return newest;
 }
 
-function newestTopLevelTranscript(dir: string): { file: string; mtimeMs: number } | null {
-  let best: { file: string; mtimeMs: number } | null = null
-  let entries: string[]
+function newestTopLevelTranscript(
+  dir: string,
+): { file: string; mtimeMs: number } | null {
+  let best: { file: string; mtimeMs: number } | null = null;
+  let entries: string[];
   try {
-    entries = fs.readdirSync(dir)
+    entries = fs.readdirSync(dir);
   } catch {
-    return null
+    return null;
   }
   for (const name of entries) {
-    if (!name.endsWith(".jsonl")) continue
-    const full = path.join(dir, name)
+    if (!name.endsWith(".jsonl")) continue;
+    const full = path.join(dir, name);
     try {
-      const st = fs.statSync(full)
+      const st = fs.statSync(full);
       if (st.isFile() && (!best || st.mtimeMs > best.mtimeMs))
-        best = { file: full, mtimeMs: st.mtimeMs }
+        best = { file: full, mtimeMs: st.mtimeMs };
     } catch {
-      continue
+      continue;
     }
   }
-  return best
+  return best;
 }
 
 // User-record tails that await no response: interrupts, slash-command echo,
@@ -172,138 +187,162 @@ function userTailAwaitsResponse(content: unknown): boolean {
       content.includes("<local-command-stdout>") ||
       content.includes("<command-name>") ||
       content.startsWith("<task-notification>")
-    )
+    );
   }
-  return true
+  return true;
 }
 
 // Widen the tail window until it holds a parseable substantive record — a
 // single transcript line can exceed 1.8 MB, and an all-fragments window must
 // fail toward busy, never idle.
 function tailImpliesOpenTurn(file: string): boolean {
-  let fd: number
+  let fd: number;
   try {
-    fd = fs.openSync(file, "r")
+    fd = fs.openSync(file, "r");
   } catch {
-    return false
+    return false;
   }
   try {
-    const size = fs.fstatSync(fd).size
-    let span = Math.min(size, 256 * 1024)
+    const size = fs.fstatSync(fd).size;
+    let span = Math.min(size, 256 * 1024);
     for (;;) {
-      const buf = Buffer.alloc(span)
-      fs.readSync(fd, buf, 0, span, size - span)
-      const lines = buf.toString("utf8").split("\n").filter(Boolean)
+      const buf = Buffer.alloc(span);
+      fs.readSync(fd, buf, 0, span, size - span);
+      const lines = buf.toString("utf8").split("\n").filter(Boolean);
       for (let i = lines.length - 1; i >= 0; i--) {
-        let rec: any
+        let rec: any;
         try {
-          rec = JSON.parse(lines[i])
+          rec = JSON.parse(lines[i]);
         } catch {
-          continue
+          continue;
         }
-        if (rec.isSidechain) continue
-        if (rec.type === "user") return userTailAwaitsResponse(rec.message?.content)
+        if (rec.isSidechain) continue;
+        if (rec.type === "user")
+          return userTailAwaitsResponse(rec.message?.content);
         if (rec.type === "assistant") {
-          const stop = rec.message?.stop_reason
-          return !(stop === "end_turn" || stop === "stop_sequence" || stop === "refusal")
+          const stop = rec.message?.stop_reason;
+          return !(
+            stop === "end_turn" ||
+            stop === "stop_sequence" ||
+            stop === "refusal"
+          );
         }
       }
-      if (span >= size) return false
-      span = Math.min(size, span * 4)
+      if (span >= size) return false;
+      span = Math.min(size, span * 4);
     }
   } catch {
-    return true
+    return true;
   } finally {
-    fs.closeSync(fd)
+    fs.closeSync(fd);
   }
 }
 
 export interface ActiveSession {
-  sessionId: string
-  file: string
+  sessionId: string;
+  file: string;
   // True when the live-session registry says a running process still holds
   // this id — resuming it elsewhere makes two writers on one transcript.
-  live: boolean
-  newestActivityMs: number
+  live: boolean;
+  newestActivityMs: number;
 }
 
-export function resolveActiveSession(projectPath: string): ActiveSession | null {
-  const dir = sessionDirFor(projectPath)
-  const live = liveSessionIds(projectPath)
+export function resolveActiveSession(
+  projectPath: string,
+): ActiveSession | null {
+  const dir = sessionDirFor(projectPath);
+  const live = liveSessionIds(projectPath);
 
-  let picked: { id: string; file: string; mtimeMs: number } | null = null
-  let newestActivity = 0
+  let picked: { id: string; file: string; mtimeMs: number } | null = null;
+  let newestActivity = 0;
   if (live.length > 0) {
     for (const id of live) {
-      const file = path.join(dir, `${id}.jsonl`)
+      const file = path.join(dir, `${id}.jsonl`);
       try {
-        const st = fs.statSync(file)
-        if (!picked || st.mtimeMs > picked.mtimeMs) picked = { id, file, mtimeMs: st.mtimeMs }
+        const st = fs.statSync(file);
+        if (!picked || st.mtimeMs > picked.mtimeMs)
+          picked = { id, file, mtimeMs: st.mtimeMs };
       } catch {
-        continue
+        continue;
       }
-      newestActivity = Math.max(newestActivity, newestMtimeUnder(path.join(dir, id), 5))
+      newestActivity = Math.max(
+        newestActivity,
+        newestMtimeUnder(path.join(dir, id), 5),
+      );
     }
   }
   if (!picked) {
-    const t = newestTopLevelTranscript(dir)
+    const t = newestTopLevelTranscript(dir);
     if (t) {
-      const id = path.basename(t.file, ".jsonl")
-      picked = { id, file: t.file, mtimeMs: t.mtimeMs }
-      newestActivity = newestMtimeUnder(path.join(dir, id), 5)
+      const id = path.basename(t.file, ".jsonl");
+      picked = { id, file: t.file, mtimeMs: t.mtimeMs };
+      newestActivity = newestMtimeUnder(path.join(dir, id), 5);
     }
   }
-  if (!picked) return null
+  if (!picked) return null;
 
   return {
     sessionId: picked.id,
     file: picked.file,
     live: live.includes(picked.id),
     newestActivityMs: Math.max(newestActivity, picked.mtimeMs),
-  }
+  };
 }
 
 // A session is only worth reopening if its transcript exists with content —
 // reopening a mis-bound id (e.g. a warm-up spawn's) yields a blank panel
 // where a real conversation used to be.
-export function resumableSession(projectPath: string, sessionId: string): boolean {
+export function resumableSession(
+  projectPath: string,
+  sessionId: string,
+): boolean {
   try {
-    return fs.statSync(path.join(sessionDirFor(projectPath), `${sessionId}.jsonl`)).size > 0
+    return (
+      fs.statSync(path.join(sessionDirFor(projectPath), `${sessionId}.jsonl`))
+        .size > 0
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
 // Serving model of a session's last assistant turn — the transcript is the
 // ground truth for which provider a live conversation is actually on.
-export function lastAssistantModel(projectPath: string, sessionId: string): string | null {
-  const file = path.join(sessionDirFor(projectPath), `${sessionId}.jsonl`)
-  let fd: number
+export function lastAssistantModel(
+  projectPath: string,
+  sessionId: string,
+): string | null {
+  const file = path.join(sessionDirFor(projectPath), `${sessionId}.jsonl`);
+  let fd: number;
   try {
-    fd = fs.openSync(file, "r")
+    fd = fs.openSync(file, "r");
   } catch {
-    return null
+    return null;
   }
   try {
-    const size = fs.fstatSync(fd).size
-    const span = Math.min(size, 256 * 1024)
-    const buf = Buffer.alloc(span)
-    fs.readSync(fd, buf, 0, span, size - span)
-    const lines = buf.toString("utf8").split("\n").filter(Boolean)
+    const size = fs.fstatSync(fd).size;
+    const span = Math.min(size, 256 * 1024);
+    const buf = Buffer.alloc(span);
+    fs.readSync(fd, buf, 0, span, size - span);
+    const lines = buf.toString("utf8").split("\n").filter(Boolean);
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
-        const rec = JSON.parse(lines[i])
-        if (rec.type === "assistant" && !rec.isSidechain && typeof rec.message?.model === "string")
-          return rec.message.model
+        const rec = JSON.parse(lines[i]);
+        if (
+          rec.type === "assistant" &&
+          !rec.isSidechain &&
+          typeof rec.message?.model === "string"
+        )
+          return rec.message.model;
       } catch {
-        continue
+        continue;
       }
     }
-    return null
+    return null;
   } catch {
-    return null
+    return null;
   } finally {
-    fs.closeSync(fd)
+    fs.closeSync(fd);
   }
 }
 
@@ -314,27 +353,33 @@ export function sessionActivityFor(
   sessionId: string,
   quietWindowMs: number,
 ): SessionActivity {
-  const dir = sessionDirFor(projectPath)
-  const file = path.join(dir, `${sessionId}.jsonl`)
-  let mtimeMs: number
+  const dir = sessionDirFor(projectPath);
+  const file = path.join(dir, `${sessionId}.jsonl`);
+  let mtimeMs: number;
   try {
-    mtimeMs = fs.statSync(file).mtimeMs
+    mtimeMs = fs.statSync(file).mtimeMs;
   } catch {
-    return "no-session"
+    return "no-session";
   }
-  const newest = Math.max(mtimeMs, newestMtimeUnder(path.join(dir, sessionId), 5))
-  const age = Date.now() - newest
-  if (age < quietWindowMs) return "busy"
-  if (age > STALE_MS) return "idle"
-  return tailImpliesOpenTurn(file) ? "busy" : "idle"
+  const newest = Math.max(
+    mtimeMs,
+    newestMtimeUnder(path.join(dir, sessionId), 5),
+  );
+  const age = Date.now() - newest;
+  if (age < quietWindowMs) return "busy";
+  if (age > STALE_MS) return "idle";
+  return tailImpliesOpenTurn(file) ? "busy" : "idle";
 }
 
-export function classify(projectPath: string, quietWindowMs: number): SessionActivity {
-  const session = resolveActiveSession(projectPath)
-  if (!session) return "no-session"
+export function classify(
+  projectPath: string,
+  quietWindowMs: number,
+): SessionActivity {
+  const session = resolveActiveSession(projectPath);
+  if (!session) return "no-session";
 
-  const age = Date.now() - session.newestActivityMs
-  if (age < quietWindowMs) return "busy"
-  if (age > STALE_MS) return "idle"
-  return tailImpliesOpenTurn(session.file) ? "busy" : "idle"
+  const age = Date.now() - session.newestActivityMs;
+  if (age < quietWindowMs) return "busy";
+  if (age > STALE_MS) return "idle";
+  return tailImpliesOpenTurn(session.file) ? "busy" : "idle";
 }

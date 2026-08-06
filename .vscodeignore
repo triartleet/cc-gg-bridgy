@@ -1,6 +1,6 @@
 .vscode/**
 src/**
-media/bridgy-logo.png
+media/gephyra-logo.png
 node_modules/**
 esbuild.mjs
 tsconfig.json

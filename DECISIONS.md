@@ -1,4 +1,4 @@
-# CC-GG-bridgy — decisions
+# Gephyra — decisions
 
 <!-- ## D-NNN — YYYY-MM-DD — title · Decision/Why/Scope/Supersedes · append-only, corrections supersede -->
 <!-- decisions-format: 1 -->
@@ -24,7 +24,7 @@ already exists natively.
 
 **Scope:** repo
 
-`claudeCode.claudeProcessWrapper` points at `bin/cc-gg-wrapper`; the shim
+`claudeCode.claudeProcessWrapper` points at `bin/gephyra-wrapper`; the shim
 injects provider env at CLI spawn based on per-project state.
 
 **Rejected:** rewriting `claudeCode.environmentVariables` (machine-scoped, and
@@ -39,21 +39,21 @@ sessions — this is cc-switch's approach).
 No busy context key exists in the extension — verified, its runtime
 `setContext` calls are UI-state only (`sideBarActive`, `viewingProposedDiff`,
 `lastClosedWasSession`, `sessionsListEnabled`, `primaryEditorEnabled`,
-`updateSupported`, `doesNotSupportSecondarySidebar`). So bridgy finds the ACTIVE
+`updateSupported`, `doesNotSupportSecondarySidebar`). So gephyra finds the ACTIVE
 session via Claude Code's live-session registry (`~/.claude/sessions/<pid>.json`
 — identity + cwd + pid, no status field) and classifies busy/idle from that
 transcript's tail plus its nested subagent activity.
 
 **Why:** `pbauermeister/claude-busy-monitor` is prior art for the
 idle/busy/asking state MODEL only — it reads probe files, not transcripts, and
-is Linux-only; the transcript-tail heuristic is bridgy's own.
+is Linux-only; the transcript-tail heuristic is gephyra's own.
 
 ## D-003 — 2026-07-26 — Handoff UX: auto-relaunch + resume toast
 
 **Scope:** repo
 
 On toggle: flip state → toast with [New conversation] and [Reload window] → the
-user picks the session to resume. Gated by `ccGgBridgy.switchToast` (amended
+user picks the session to resume. Gated by `gephyra.switchToast` (amended
 2026-07-27, default ON — it is the only surface teaching the handoff flow;
 regular users turn it off once the flow is muscle memory).
 
@@ -68,14 +68,14 @@ old conclusion from this entry.
 **Scope:** repo
 
 State keyed by workspace folder; the shim resolves the project from its cwd.
-Bridgy toggles the PROVIDER and never touches the model choice — that stays the
+Gephyra toggles the PROVIDER and never touches the model choice — that stays the
 user's per-task `/model` decision.
 
 ## D-005 — 2026-07-26 — Remote reach: beam over Anthropic's Remote Control
 
 **Scope:** repo
 
-`cc-gg-bridgy.beam` resumes the project's active session in an integrated
+`gephyra.beam` resumes the project's active session in an integrated
 terminal under `--remote-control --permission-mode bypassPermissions`, with
 provider env injected by beam itself (terminal spawns bypass the wrapper).
 
@@ -86,7 +86,7 @@ scope) is already covered by the RC mirror in the Claude apps, so zero UI to
 maintain beats feature parity nobody asked for.
 
 **Consequences:** host is the integrated terminal only — a window quit kills the
-beam, a deliberate trade. The RC connect is explicit per beam; bridgy never
+beam, a deliberate trade. The RC connect is explicit per beam; gephyra never
 flips the "Enable Remote Control for all sessions" config.
 
 ## D-006 — 2026-07-27 — Provider model: named env profiles
@@ -94,7 +94,7 @@ flips the "Enable Remote Control for all sessions" config.
 **Scope:** repo · **Supersedes:** the fixed `anthropic | glm` pair
 
 A provider is either the reserved `anthropic` (clean-env passthrough) or the
-basename of `~/.config/cc-gg-bridgy/<name>.env` (charset `[A-Za-z0-9_-]+`,
+basename of `~/.config/gephyra/<name>.env` (charset `[A-Za-z0-9_-]+`,
 matching what the shim accepts from state.json).
 
 **Two invariants worth keeping:** usage adapters are keyed by the profile's
@@ -131,10 +131,10 @@ only in a conversation spawned under the provider; `/status` is the ground truth
 The extension keeps ONE CLI process per window and reuses it across
 conversations, so a switched profile's env only landed after a window reload. It
 exposes no restart command and watches no config that respawns the process, so
-bridgy ends it: `pgrep -P <own pid>` (bridgy shares the extension host, so the
+gephyra ends it: `pgrep -P <own pid>` (gephyra shares the extension host, so the
 CLI is a sibling child), filtered to the Claude extension's install path so
 language servers are never touched, then SIGTERM. Gated by
-`ccGgBridgy.restartCliOnSwitch` (default ON; fail-open — pgrep errors are
+`gephyra.restartCliOnSwitch` (default ON; fail-open — pgrep errors are
 swallowed and the old reload path still works).
 
 On top of that, a switch respawns EVERY bound Claude panel in place: each is
@@ -205,7 +205,7 @@ second entry can't win), use it only while unexpired (60 s skew), otherwise skip
 the cycle and let the tee answer — the CLI renews its own token on its next
 turn. `usageWindow()` parses both field shapes.
 
-**Invariant:** bridgy is a read-only consumer of another program's credential.
+**Invariant:** gephyra is a read-only consumer of another program's credential.
 Any future feature that would write, refresh, or rotate one is out of bounds
 without an explicit maintainer decision.
 
@@ -215,7 +215,7 @@ without an explicit maintainer decision.
 
 Both providers are consumed exactly as their subscriptions intend.
 
-- *Scoped exception — vision proxy* (opt-in `ccGgBridgy.visionProxy`, off by
+- *Scoped exception — vision proxy* (opt-in `gephyra.visionProxy`, off by
   default; [D-009](#d-009--2026-07-30--vision-proxy-opt-in-scoped-exception-to-the-no-proxy-stance)).
   When enabled, a localhost pass-through forwards your own traffic verbatim to
   the configured provider and redirects only image-bearing turns to Anthropic
@@ -223,8 +223,8 @@ Both providers are consumed exactly as their subscriptions intend.
   turns, inspects or stores no other content, and touches no OAuth flow. Off ⇒
   zero traffic proxied — the default and the shipped public posture.
 - *Scoped exception — live Anthropic usage* (opt-in
-  `ccGgBridgy.anthropicLiveUsage`, off by default). The statusline feed is
-  terminal-only, so a panel-only user sees stale usage. When enabled, bridgy
+  `gephyra.anthropicLiveUsage`, off by default). The statusline feed is
+  terminal-only, so a panel-only user sees stale usage. When enabled, gephyra
   READS the access token Claude Code keeps in the macOS Keychain (service
   `Claude Code-credentials`, account `claude-code-user`) and GETs
   `api.anthropic.com/api/oauth/usage` with it — the same endpoint Claude Code
@@ -233,10 +233,10 @@ Both providers are consumed exactly as their subscriptions intend.
   no token endpoint is ever called, no credential written, and an expired token
   is skipped rather than renewed. Fails open to the staled statusline feed.
 - *Re-login is DELEGATED, not reimplemented* (2026-07-30, narrowed 2026-08-03).
-  `cc-gg-bridgy.loginAnthropic` opens a terminal running `claude login`
+  `gephyra.loginAnthropic` opens a terminal running `claude login`
   directly, bypassing the wrapper; Claude Code mints and stores the credential.
-  bridgy writes no credentials, ever. The old auto-prompt on `invalid_grant` is
-  gone with the refresh path — bridgy no longer performs the grant that could
+  gephyra writes no credentials, ever. The old auto-prompt on `invalid_grant` is
+  gone with the refresh path — gephyra no longer performs the grant that could
   detect expiry, so re-login is user-initiated.
 
 ## D-012 — 2026-07-26 — No second chat UI

@@ -1,16 +1,16 @@
 {
-  "name": "cc-gg-bridgy",
-  "displayName": "CC-GG-bridgy",
+  "name": "gephyra",
+  "displayName": "Gephyra",
   "description": "Provider switch for the Claude Code extension: Anthropic ⇄ any Anthropic-compatible endpoint (z.ai GLM, Kimi, …) via named env profiles, per project, busy-gated — plus one-command beam of the active session to your phone via Remote Control",
   "version": "0.6.2",
   "publisher": "alkisyuv",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/triartleet/cc-gg-bridgy.git"
+    "url": "https://github.com/triartleet/gephyra.git"
   },
   "bugs": {
-    "url": "https://github.com/triartleet/cc-gg-bridgy/issues"
+    "url": "https://github.com/triartleet/gephyra/issues"
   },
   "keywords": [
     "claude-code",
@@ -41,59 +41,59 @@
   "contributes": {
     "commands": [
       {
-        "command": "cc-gg-bridgy.toggle",
-        "title": "CC-GG-bridgy: Switch provider for this project (Claude ⇄ GLM ⇄ …)"
+        "command": "gephyra.toggle",
+        "title": "Gephyra: Switch provider for this project (Claude ⇄ GLM ⇄ …)"
       },
       {
-        "command": "cc-gg-bridgy.setupWrapper",
-        "title": "CC-GG-bridgy: Configure Claude Code process wrapper"
+        "command": "gephyra.setupWrapper",
+        "title": "Gephyra: Configure Claude Code process wrapper"
       },
       {
-        "command": "cc-gg-bridgy.beam",
-        "title": "CC-GG-bridgy: Beam session to phone (Remote Control)"
+        "command": "gephyra.beam",
+        "title": "Gephyra: Beam session to phone (Remote Control)"
       },
       {
-        "command": "cc-gg-bridgy.loginAnthropic",
-        "title": "CC-GG-bridgy: Re-login Anthropic (run claude login)"
+        "command": "gephyra.loginAnthropic",
+        "title": "Gephyra: Re-login Anthropic (run claude login)"
       }
     ],
     "configuration": {
-      "title": "CC-GG-bridgy",
+      "title": "Gephyra",
       "properties": {
-        "ccGgBridgy.quietWindowMs": {
+        "gephyra.quietWindowMs": {
           "type": "number",
           "default": 2500,
           "description": "Transcript must be silent this long before a session counts as idle."
         },
-        "ccGgBridgy.switchToast": {
+        "gephyra.switchToast": {
           "type": "boolean",
           "default": true,
           "description": "Show the post-switch notification with the [New conversation] shortcut. Off: the status-bar label change is the only confirmation."
         },
-        "ccGgBridgy.restartCliOnSwitch": {
+        "gephyra.restartCliOnSwitch": {
           "type": "boolean",
           "default": true,
           "description": "After a provider switch, end this window's idle Claude Code CLI process so the next conversation respawns under the new provider (model list updates without a window reload). Only processes backing THIS workspace's open conversations defer; others die immediately. Queued processes die when their conversation closes (no 'exited' banner)."
         },
-        "ccGgBridgy.anthropicLiveUsage": {
+        "gephyra.anthropicLiveUsage": {
           "type": "boolean",
           "default": false,
-          "description": "Read LIVE Anthropic usage with the access token Claude Code stores in the macOS Keychain (opt-in; off by default). Read-only: bridgy never refreshes or rewrites that credential. The statusline feed only updates from terminal sessions — enabling this polls the usage endpoint directly, so the bar stays fresh in the panel too. Falls back to the statusline feed on any failure. macOS only."
+          "description": "Read LIVE Anthropic usage with the access token Claude Code stores in the macOS Keychain (opt-in; off by default). Read-only: gephyra never refreshes or rewrites that credential. The statusline feed only updates from terminal sessions — enabling this polls the usage endpoint directly, so the bar stays fresh in the panel too. Falls back to the statusline feed on any failure. macOS only."
         },
-        "ccGgBridgy.visionProxy": {
+        "gephyra.visionProxy": {
           "type": "boolean",
           "default": false,
-          "description": "Opt-in localhost proxy that keeps a project on GLM/Kimi for text and code but routes image-bearing message turns (and the tool-loops they start) to Anthropic pay-as-you-go, where vision actually works. Requires ~/.config/cc-gg-bridgy/anthropic-vision.env (ANTHROPIC_API_KEY + CC_GG_BRIDGY_VISION_MODEL). The wrapper only routes through it while that file and the url file exist; on any failure it falls back to direct provider injection (Claude Code never breaks). Scoped, opt-in exception to the no-proxy stance — see DECISIONS.md."
+          "description": "Opt-in localhost proxy that keeps a project on GLM/Kimi for text and code but routes image-bearing message turns (and the tool-loops they start) to Anthropic pay-as-you-go, where vision actually works. Requires ~/.config/gephyra/anthropic-vision.env (ANTHROPIC_API_KEY + GEPHYRA_VISION_MODEL). The wrapper only routes through it while that file and the url file exist; on any failure it falls back to direct provider injection (Claude Code never breaks). Scoped, opt-in exception to the no-proxy stance — see DECISIONS.md."
         },
-        "ccGgBridgy.visionProxyPort": {
+        "gephyra.visionProxyPort": {
           "type": "number",
           "default": 4399,
-          "description": "Localhost port for the vision proxy (shared across windows; first window hosts, others reuse). Only meaningful when ccGgBridgy.visionProxy is on."
+          "description": "Localhost port for the vision proxy (shared across windows; first window hosts, others reuse). Only meaningful when gephyra.visionProxy is on."
         },
-        "ccGgBridgy.visionModel": {
+        "gephyra.visionModel": {
           "type": "string",
           "default": "claude-sonnet-5",
-          "description": "Claude model used for the vision leg (image turns) when ccGgBridgy.visionProxy is on. Any current Anthropic model id, e.g. claude-sonnet-5 (default) or claude-haiku-4-5-20251001 for cheaper vision. The API KEY stays in ~/.config/cc-gg-bridgy/anthropic-vision.env (never here); a CC_GG_BRIDGY_VISION_MODEL in that file overrides this setting if set."
+          "description": "Claude model used for the vision leg (image turns) when gephyra.visionProxy is on. Any current Anthropic model id, e.g. claude-sonnet-5 (default) or claude-haiku-4-5-20251001 for cheaper vision. The API KEY stays in ~/.config/gephyra/anthropic-vision.env (never here); a GEPHYRA_VISION_MODEL in that file overrides this setting if set."
         }
       }
     }

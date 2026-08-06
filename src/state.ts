@@ -16,7 +16,7 @@ const NAME_RE = /^[A-Za-z0-9_-]+$/;
 // the old one is used while it is the only one present. Nothing is copied or
 // moved: the credentials are the user's, and silently relocating files that hold
 // keys is not this extension's call to make.
-const LEGACY_DIR_NAME = "cc-gg-bridgy";
+const LEGACY_DIR_NAME = "cc-gg-bridgy" // allow-published-string: former config dir, migration path
 const DIR_NAME = "gephyra";
 
 function resolveStateDir(): string {

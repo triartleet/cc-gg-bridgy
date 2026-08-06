@@ -4,3 +4,12 @@ echo "› pnpm typecheck"
 pnpm typecheck || exit 1
 echo "› etymd audit"
 npx etymd audit --no-ledger --fail-on risk || exit 1
+
+# Content gate, second pass: catches anything committed with --no-verify, and anything a
+# rebase or merge brought in from elsewhere. Scans the whole tree rather than one diff.
+GATE="${CONTENT_GATE:-$HOME/.local/bin/public-repo-check}"
+if [ -x "$GATE" ] && [ "${CONTENT_GATE_PREPUSH:-1}" = "1" ]; then
+  "$GATE" --tree 2>/dev/null || true
+fi
+
+exit 0

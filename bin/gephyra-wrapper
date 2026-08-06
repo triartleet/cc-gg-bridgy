@@ -12,8 +12,8 @@ set -u
 # name wins, the pre-rename directory is used while it is the only one present.
 # The two MUST agree — the extension writes state.json and this shim reads it.
 CONFIG_DIR="${HOME}/.config/gephyra"
-if [ ! -d "${CONFIG_DIR}" ] && [ -d "${HOME}/.config/cc-gg-bridgy" ]; then
-  CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"
+if [ ! -d "${CONFIG_DIR}" ] && [ -d "${HOME}/.config/cc-gg-bridgy" ]; then  # allow-published-string: former config dir, migration path
+  CONFIG_DIR="${HOME}/.config/cc-gg-bridgy"  # allow-published-string
 fi
 STATE_FILE="${CONFIG_DIR}/state.json"
 DEBUG_LOG="${CONFIG_DIR}/debug.log"

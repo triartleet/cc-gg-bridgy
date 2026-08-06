@@ -1,0 +1,9 @@
+# Strings the artifact gate may see in a published build, one extended-regex per line.
+# Keep each as narrow as the exception genuinely is — this file is a hole in the gate.
+#
+# The extension was renamed. An install predating the rename keeps its provider profiles,
+# and therefore its API keys, in a directory named after the former id, so the migration
+# path has to name that directory. It appears in the bundle because bundlers strip the
+# comments that mark such exceptions in source.
+LEGACY_DIR_NAME = "cc-gg-bridgy"
+\.config/cc-gg-bridgy

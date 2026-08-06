@@ -9,7 +9,11 @@
   </p>
 </div>
 
-One AI subscription answers every project you work on, so they all drain the same allowance — and when you hit the limit, everything stops, whether a project needed the expensive plan or not. Gephyra adds a switch to the Claude Code extension in Cursor and VS Code so each project can pick its own provider — the company and subscription that answers your AI requests. The other providers are separate subscriptions you sign up and pay for yourself; gephyra connects them, it doesn't include them. Installing gephyra changes nothing until you accept the one pop-up question it shows and opt a project in. And if it is ever broken, misconfigured, or deleted, Claude Code keeps working as if gephyra were never installed.
+**Give every project its own AI subscription.**
+
+One AI subscription answers every project you work on, so they all drain the same allowance — and when you hit the limit, everything stops, whether a project needed the expensive plan or not.
+
+Gephyra adds a switch to the Claude Code extension in Cursor and VS Code so each project can pick its own provider — the company and subscription that answers your AI requests. The other providers are separate subscriptions you sign up and pay for yourself; gephyra connects them, it doesn't include them. Installing gephyra changes nothing until you accept the one pop-up question it shows and opt a project in. And if it is ever broken, misconfigured, or deleted, Claude Code keeps working as if gephyra were never installed.
 
 Works on macOS and Linux (not Windows), alongside the official Claude Code extension.
 

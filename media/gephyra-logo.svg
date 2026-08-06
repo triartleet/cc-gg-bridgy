@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300" role="img" aria-label="Gephyra — one client, a bridge, and a choice of provider on the far shore">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e2a3a"/>
+      <stop offset="1" stop-color="#121a24"/>
+    </linearGradient>
+    <linearGradient id="span" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e8a913"/>
+      <stop offset="0.5" stop-color="#ffd970"/>
+      <stop offset="1" stop-color="#e8a913"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect width="640" height="300" rx="18"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="640" height="300" fill="url(#sky)"/>
+
+    <!-- water -->
+    <rect y="196" width="640" height="104" fill="#1b3348"/>
+    <g fill="none" stroke="#33608a" stroke-width="3" stroke-linecap="round">
+      <path d="M-10 224 q20 -8 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0" opacity="0.7"/>
+      <path d="M-30 252 q20 -8 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0" opacity="0.45"/>
+      <path d="M-10 280 q20 -8 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0" opacity="0.25"/>
+    </g>
+
+    <!-- shores -->
+    <path d="M-4 182 H120 v18 H-4 Z" fill="#33445a"/>
+    <path d="M520 182 H644 v18 H520 Z" fill="#33445a"/>
+
+    <!-- near shore: the editor -->
+    <g transform="translate(30 96)">
+      <rect width="72" height="52" rx="6" fill="#2b3a4d" stroke="#546a86" stroke-width="2.5"/>
+      <rect x="8" y="10" width="34" height="4" rx="2" fill="#7f93ab"/>
+      <rect x="8" y="21" width="50" height="4" rx="2" fill="#7f93ab" opacity="0.75"/>
+      <rect x="8" y="32" width="26" height="4" rx="2" fill="#7f93ab" opacity="0.5"/>
+      <rect x="24" y="52" width="24" height="7" rx="2" fill="#546a86"/>
+      <rect x="14" y="59" width="44" height="4" rx="2" fill="#546a86"/>
+    </g>
+
+    <!-- towers -->
+    <rect x="150" y="72" width="15" height="118" rx="4" fill="#93a8c0"/>
+    <rect x="475" y="72" width="15" height="118" rx="4" fill="#93a8c0"/>
+    <rect x="145" y="66" width="25" height="8" rx="3" fill="#b6c6d8"/>
+    <rect x="470" y="66" width="25" height="8" rx="3" fill="#b6c6d8"/>
+
+    <!-- main cable -->
+    <path d="M157 80 Q320 210 482 80" fill="none" stroke="url(#span)" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- hangers -->
+    <g stroke="#f0b81f" stroke-width="4.5" stroke-linecap="round">
+      <line x1="200" y1="126" x2="200" y2="176"/>
+      <line x1="240" y1="152" x2="240" y2="176"/>
+      <line x1="280" y1="168" x2="280" y2="176"/>
+      <line x1="320" y1="173" x2="320" y2="176"/>
+      <line x1="360" y1="168" x2="360" y2="176"/>
+      <line x1="400" y1="152" x2="400" y2="176"/>
+      <line x1="440" y1="126" x2="440" y2="176"/>
+    </g>
+
+    <!-- deck -->
+    <rect x="70" y="176" width="500" height="15" rx="5" fill="url(#span)"/>
+
+    <!-- far shore: three provider endpoints, one lit -->
+    <g transform="translate(536 88)">
+      <circle cx="14" cy="14" r="13" fill="#f0b81f"/>
+      <circle cx="14" cy="52" r="13" fill="#3c4d63" stroke="#63799a" stroke-width="2"/>
+      <circle cx="14" cy="90" r="13" fill="#3c4d63" stroke="#63799a" stroke-width="2"/>
+    </g>
+  </g>
+</svg>

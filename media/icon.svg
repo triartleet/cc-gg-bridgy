@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Gephyra — a suspension bridge spanning two shores">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e2a3a"/>
+      <stop offset="1" stop-color="#121a24"/>
+    </linearGradient>
+    <linearGradient id="span" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e8a913"/>
+      <stop offset="0.5" stop-color="#ffd970"/>
+      <stop offset="1" stop-color="#e8a913"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22405a"/>
+      <stop offset="1" stop-color="#0f2233"/>
+    </linearGradient>
+    <clipPath id="round">
+      <circle cx="128" cy="128" r="128"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <!-- sky -->
+    <rect width="256" height="256" fill="url(#sky)"/>
+
+    <!-- water -->
+    <rect y="170" width="256" height="86" fill="#1b3348"/>
+    <g fill="none" stroke="#33608a" stroke-width="3" stroke-linecap="round">
+      <path d="M-6 196 q16 -7 32 0 t32 0 t32 0 t32 0 t32 0 t32 0 t32 0" opacity="0.7"/>
+      <path d="M-18 218 q16 -7 32 0 t32 0 t32 0 t32 0 t32 0 t32 0 t32 0" opacity="0.45"/>
+      <path d="M-6 240 q16 -7 32 0 t32 0 t32 0 t32 0 t32 0 t32 0 t32 0" opacity="0.25"/>
+    </g>
+
+    <!-- shores -->
+    <path d="M-4 158 H44 v16 H-4 Z" fill="#33445a"/>
+    <path d="M212 158 H260 v16 H212 Z" fill="#33445a"/>
+
+    <!-- towers -->
+    <rect x="52" y="70" width="13" height="92" rx="3.5" fill="#93a8c0"/>
+    <rect x="191" y="70" width="13" height="92" rx="3.5" fill="#93a8c0"/>
+    <rect x="48" y="66" width="21" height="7" rx="3" fill="#b6c6d8"/>
+    <rect x="187" y="66" width="21" height="7" rx="3" fill="#b6c6d8"/>
+
+    <!-- main cable -->
+    <path d="M58.5 76 Q128 166 197.5 76" fill="none" stroke="url(#span)" stroke-width="9" stroke-linecap="round"/>
+
+    <!-- hangers -->
+    <g stroke="#f0b81f" stroke-width="4" stroke-linecap="round">
+      <line x1="82" y1="114" x2="82" y2="150"/>
+      <line x1="105" y1="136" x2="105" y2="150"/>
+      <line x1="128" y1="143" x2="128" y2="150"/>
+      <line x1="151" y1="136" x2="151" y2="150"/>
+      <line x1="174" y1="114" x2="174" y2="150"/>
+    </g>
+
+    <!-- deck -->
+    <rect x="18" y="150" width="220" height="13" rx="4.5" fill="url(#span)"/>
+  </g>
+</svg>

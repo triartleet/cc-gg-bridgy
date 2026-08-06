@@ -24,3 +24,7 @@ DECISIONS.md
 # never match. If a stray map is ever present it must not ship — it is bigger than
 # the bundle it describes and embeds the full TypeScript source.
 **/*.map
+
+# SVG sources for the icon and banner — the rendered PNGs ship, the sources do not.
+media/*.svg
+media/gephyra-logo.png

@@ -1,7 +1,7 @@
 # Gephyra
 
 <div align="center">
-  <img src="media/gephyra-logo.png" width="220" alt="Gephyra — a bee with a stinger, ready to switch providers">
+  <img src="media/gephyra-logo.png" width="520" alt="Gephyra — a bridge from your editor to whichever provider you pick">
   <p>
     <a href="https://marketplace.visualstudio.com/items?itemName=alkisyuv.gephyra"><img src="https://img.shields.io/visual-studio-marketplace/v/alkisyuv.gephyra?label=VS%20Marketplace&color=0066b8" alt="VS Marketplace"></a>
     <a href="https://open-vsx.org/extension/alkisyuv/gephyra"><img src="https://img.shields.io/open-vsx/v/alkisyuv/gephyra?label=Open%20VSX&color=a60ee5" alt="Open VSX"></a>

@@ -216,7 +216,7 @@ function forward(
       if (!res.writableEnded)
         res.end(
           JSON.stringify({
-            error: { type: "cc_gg_bridgy_proxy_error", message: String(err) },
+            error: { type: "gephyra_proxy_error", message: String(err) },
           }),
         );
     } catch {
@@ -242,7 +242,7 @@ function forwardToUpstream(
       res.end(
         JSON.stringify({
           error: {
-            type: "cc_gg_bridgy_proxy_error",
+            type: "gephyra_proxy_error",
             message:
               "no ANTHROPIC_BASE_URL in " + provider + ".env — cannot route",
           },

@@ -103,10 +103,10 @@ POSIX sh — Windows would need a different wrapper), and pnpm/Node 20.
    ```bash
    # after: input=$(cat)
    {
-     bridgy_dir="$HOME/.config/gephyra"
-     mkdir -p "$bridgy_dir" &&
-       printf '%s' "$input" >"$bridgy_dir/statusline-last.json.tmp" &&
-       mv -f "$bridgy_dir/statusline-last.json.tmp" "$bridgy_dir/statusline-last.json"
+     gephyra_dir="$HOME/.config/gephyra"
+     mkdir -p "$gephyra_dir" &&
+       printf '%s' "$input" >"$gephyra_dir/statusline-last.json.tmp" &&
+       mv -f "$gephyra_dir/statusline-last.json.tmp" "$gephyra_dir/statusline-last.json"
    } 2>/dev/null || true
    ```
 

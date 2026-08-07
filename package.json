@@ -103,7 +103,7 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "build:production": "node esbuild.mjs --production",
-    "vscode:prepublish": "npm run build:production && artifact-check"
+    "vscode:prepublish": "npm run build:production && ./scripts/artifact-check.sh"
   },
   "devDependencies": {
     "@types/node": "20.17.17",

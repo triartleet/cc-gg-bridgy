@@ -19,6 +19,10 @@ pnpm-workspace.yaml
 .markdownlint.jsonc
 AGENTS.md
 DECISIONS.md
+# The README links the roadmap by absolute GitHub URL (D-013), so the canonical copy is
+# always one click away and a shipped duplicate would only go stale inside installed
+# versions — a roadmap frozen at install time is worse than no roadmap.
+ROADMAP.md
 *.vsix
 
 # Belt and braces: `vscode:prepublish` builds without a source map, so this should

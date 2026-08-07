@@ -5,6 +5,7 @@
   "version": "0.6.2",
   "publisher": "alkisyuv",
   "license": "MIT",
+  "packageManager": "pnpm@11.5.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/triartleet/gephyra.git"

@@ -13,19 +13,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # No version pin here on purpose: the action reads package.json's `packageManager`
+      # field, so every checkout resolves pnpm from one source. A pin here is a second
+      # source that drifts silently — a hardcoded pnpm 9 could not read
+      # pnpm-workspace.yaml's `allowBuilds` and failed before install ever ran.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm build:production
       # The repo's instruction files, verified against reality on every push.
       - name: etymd audit (self)
-        run: npx --yes etymd audit --no-ledger --fail-on risk
+        run: |
+          # git never clones hooksPath — it is local config, so every fresh checkout has
+          # the tracked hooks present but unwired, which the audit rightly calls a risk.
+          # `etymd gates` sets exactly this line when wiring a checkout for work; doing
+          # it here keeps the audit judging the repo rather than the runner.
+          git config core.hooksPath .githooks
+          npx --yes etymd audit --no-ledger --fail-on risk
       # The extension artifact, proven on every push rather than first attempted on release
       # day. `vsce ls` resolves .vscodeignore exactly as packaging does, so this asserts the
       # REAL file list a release would contain — the class this guards is a stray local file

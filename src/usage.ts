@@ -52,7 +52,7 @@ const FEED_FRESH_MS = 30 * 60 * 1000;
 const KEYCHAIN_SERVICE = "Claude Code-credentials";
 // The CLI's canonical keychain account. Targeting it (not an unqualified read)
 // means gephyra uses the SAME user the CLI does, even if a stray second entry
-// (e.g. a former corp login) is present under the same service.
+// (e.g. left behind by a previous login) is present under the same service.
 const CLAUDE_ACCOUNT = "claude-code-user";
 const CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const KEYCHAIN_TIMEOUT_MS = 8000;
@@ -112,11 +112,11 @@ function parseResetMs(v: unknown): number | null {
 
 // The Anthropic numbers come from Claude Code's OWN statusline payload
 // (rate_limits, present once a session has made a real turn), teed to a file
-// by ~/.claude/statusline-command.sh. Chosen over the community OAuth usage
-// endpoint because the Keychain access-token copy rots on this machine
-// (verified 401, token expired) and refreshing it ourselves would touch auth
-// flows — a locked non-goal. Trade-off: only TERMINAL sessions run the
-// statusline script, so the feed's freshness rides on terminal use.
+// by the user's statusline script. Chosen over the community OAuth usage
+// endpoint because the Keychain access-token copy can already be expired
+// between CLI renewals, and refreshing it ourselves would touch auth flows —
+// a locked non-goal. Trade-off: only TERMINAL sessions run the statusline
+// script, so the feed's freshness rides on terminal use.
 function fetchAnthropicUsage(): ProviderUsage {
   const file = path.join(
     os.homedir(),

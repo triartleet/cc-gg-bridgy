@@ -1,13 +1,13 @@
 {
   // Markdown validation rules — deliberately PER PROJECT rather than in VS Code's user
-  // settings, so that no other repo inherits them. The user-level block owns only preview
-  // cosmetics (stylesheet, font, line height, wrap); the rules that produce warnings live here.
+  // settings, so that no other repo inherits them. User-level settings own only preview
+  // cosmetics; the rules that produce warnings live here.
   //
   // These settings are ADVISORY, never a second opinion on a push gate. Link checking is not
   // wired here — a dedicated checker was tried and reverted as disproportionate — so the
   // editor is the only surface reporting these, and it has never been in the push path.
   //
-  // referenceLinks is OFF because it does not survive measurement: it produced 301 of 326
+  // referenceLinks is OFF because it does not survive measurement: it produced hundreds of
   // warnings with zero true positives, all ordinary bracketed prose ([CRITICAL], [bot],
   // [--base <branch>]), burying real findings beneath them. A real CommonMark parser has no
   // such rule — an undefined shortcut reference is a text node, not a link.
@@ -19,9 +19,8 @@
   "markdown.validate.fragmentLinks.enabled": "warning",
 
 
-  // Prettier does not govern this repo's markdown — no format script here covers .md — but
-  // VS Code's user settings set editor.formatOnSave globally and [markdown] defaultFormatter
-  // to Prettier, and prettier.requireConfig is unset (default false), so Prettier would rewrite
+  // Prettier does not govern this repo's markdown — no format script here covers .md — so
+  // formatOnSave stays off: a user-level format-on-save default would otherwise rewrite
   // these files on save using settings nothing in this repo ever checks.
   "[markdown]": { "editor.formatOnSave": false }
 }

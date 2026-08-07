@@ -35,13 +35,13 @@ user-facing guide — keep that split.
   behavior manually in the Extension Development Host before calling a change done.
 - **Never commit or push unasked.** The maintainer drives version control; commits stay unattributed
   (no Co-authored-by / generated-with trailers).
-- **Public repo.** Commit author is the personal identity already set in local git config —
-  never a corporate one. Publishing exposes ALL history, not just the current tree, so no
-  tracked file or commit message may carry: absolute paths, hostnames or other machine and
-  environment detail; employer, client or internal project names and ticket identifiers;
-  identity or credential configuration written into prose (author metadata belongs in
-  `LICENSE` and `package.json`); the names of the maintainer's other projects; competitive
-  positioning against other tools; or internal deliberation and provenance. The test:
+- **Public repo.** Commit author must be the identity set in local git config. Publishing
+  exposes ALL history, not just the current tree, so no tracked file or commit message may
+  carry: absolute paths, hostnames or other machine and environment detail; workplace or
+  third-party identifiers of any kind; identity or credential configuration written into
+  prose (author metadata belongs in `LICENSE` and `package.json`); references to the
+  maintainer's other work; competitive positioning against other tools; or internal
+  deliberation and provenance. The test:
   *would this line make sense, and be safe, read by a stranger who knows nothing about the
   maintainer or their other work?* A pre-commit content gate enforces this where installed
   (`.githooks/pre-commit`) — a backstop, not a substitute for the rule.

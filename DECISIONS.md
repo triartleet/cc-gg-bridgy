@@ -319,3 +319,15 @@ implementation:
   sibling's later clean shutdown — which is why `pidAlive()` in `src/busy.ts`
   is load-bearing rather than defensive. `peerProtocol` is a bare version int
   (`1`), so there is no richer status channel to adopt.
+
+## D-013 — 2026-08-07 — The roadmap lives in ROADMAP.md; the README points at it
+
+**Decision:** The what's-next list moves from an inline README section to `ROADMAP.md`,
+freely edited and pruned; the README carries a one-line pointer.
+
+**Why:** the README describes what exists today, and an inline roadmap goes stale exactly
+there — the surface every prospective user reads first. A dedicated file may be rewritten or
+emptied without ceremony, while the decisions behind deferrals stay in this record, where
+supersession is the mechanism.
+
+**Scope:** repo.

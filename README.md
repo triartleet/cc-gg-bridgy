@@ -1,11 +1,11 @@
 # Gephyra
 
 <div align="center">
-  <img src="media/gephyra-logo.png" width="520" alt="Gephyra — a bridge from your editor to whichever provider you pick">
+  <img src="https://raw.githubusercontent.com/triartleet/gephyra/main/media/gephyra-logo.png" width="520" alt="Gephyra — a bridge from your editor to whichever provider you pick">
   <p>
     <a href="https://marketplace.visualstudio.com/items?itemName=alkisyuv.gephyra"><img src="https://img.shields.io/visual-studio-marketplace/v/alkisyuv.gephyra?label=VS%20Marketplace&color=0066b8" alt="VS Marketplace"></a>
     <a href="https://open-vsx.org/extension/alkisyuv/gephyra"><img src="https://img.shields.io/open-vsx/v/alkisyuv/gephyra?label=Open%20VSX&color=a60ee5" alt="Open VSX"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+    <a href="https://github.com/triartleet/gephyra/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
   </p>
 </div>
 
@@ -335,7 +335,7 @@ Palette commands:
 ## Under the hood
 
 Validated live against Claude Code extension 2.1.220 (see
-[DECISIONS.md](DECISIONS.md) for the decision record, including the approaches
+[DECISIONS.md](https://github.com/triartleet/gephyra/blob/main/DECISIONS.md) for the decision record, including the approaches
 that were tried and reverted).
 
 - **Process-wrapper shim.** Gephyra points `claudeCode.claudeProcessWrapper`
@@ -461,15 +461,9 @@ each fix is provable and regressions are caught before a human notices.
 
 ## Roadmap
 
-- **Alt-provider remote reach** (next up): official Remote Control is
-  Anthropic-only (the CLI disables it whenever `ANTHROPIC_BASE_URL` is set),
-  so investigate remote control for GLM/Kimi-served sessions — Happy-style
-  open-source bridges, or other angles.
-- Live-validate the Kimi leg against a real Kimi Code subscription (auth
-  var, model slots, usage response shape).
-- Button in the Claude panel's title bar beside the status-bar item.
-- Per-session provider badges in the tooltip (from transcript `model`
-  fields).
+What's next lives in [ROADMAP.md](https://github.com/triartleet/gephyra/blob/main/ROADMAP.md); the decision
+record, including the approaches ruled out, is [DECISIONS.md](https://github.com/triartleet/gephyra/blob/main/DECISIONS.md).
+
 
 ## Disclaimer
 

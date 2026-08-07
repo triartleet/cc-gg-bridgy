@@ -1,9 +1,14 @@
 import { execFile } from "node:child_process";
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
-import { ANTHROPIC, envFileFor, listProviders, Provider } from "./state";
+import {
+  ANTHROPIC,
+  envFileFor,
+  listProviders,
+  Provider,
+  stateDir,
+} from "./state";
 
 // Usage is polled per discovered provider: Anthropic from the statusline tee,
 // env profiles through an adapter picked by their base URL's hostname. Gephyra
@@ -118,12 +123,10 @@ function parseResetMs(v: unknown): number | null {
 // a locked non-goal. Trade-off: only TERMINAL sessions run the statusline
 // script, so the feed's freshness rides on terminal use.
 function fetchAnthropicUsage(): ProviderUsage {
-  const file = path.join(
-    os.homedir(),
-    ".config",
-    "gephyra",
-    "statusline-last.json",
-  );
+  // Resolved via stateDir so this reads the SAME directory the provider
+  // registry does — a hardcoded path here can split from the legacy-dir
+  // fallback and silently freeze the readout on an old snapshot.
+  const file = path.join(stateDir, "statusline-last.json");
   const raw = readFileMaybe(file);
   if (!raw)
     return unavailable("no statusline feed yet — run a terminal claude turn");

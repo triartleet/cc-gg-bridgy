@@ -15,6 +15,7 @@ pnpm-workspace.yaml
 # Verify with `npx @vscode/vsce ls` before every publish.
 .etymd/**
 .githooks/**
+.github/**
 .markdownlint.jsonc
 AGENTS.md
 DECISIONS.md

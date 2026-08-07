@@ -1,0 +1,51 @@
+# The stranger's view: does this repo build from nothing? Local hooks verify the owner's clone —
+# configured hooksPath, warm node_modules, a PATH with everything on it. CI is the only check
+# that runs from a bare checkout, which is exactly what any other user gets.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:production
+      # The repo's instruction files, verified against reality on every push.
+      - name: etymd audit (self)
+        run: npx --yes etymd audit --no-ledger --fail-on risk
+      # The extension artifact, proven on every push rather than first attempted on release
+      # day. `vsce ls` resolves .vscodeignore exactly as packaging does, so this asserts the
+      # REAL file list a release would contain — the class this guards is a stray local file
+      # shipping because packagers ignore .gitignore. ARTIFACT_CHECK_SKIP: vscode:prepublish
+      # chains the machine-local content screen, which has no patterns in CI; the manifest
+      # assertion below is CI's own equivalent check on what ships.
+      - name: package dry-run (what would ship)
+        env:
+          ARTIFACT_CHECK_SKIP: "1"
+        run: |
+          npx --yes @vscode/vsce ls --no-dependencies | sort > /tmp/shipped
+          sort > /tmp/expected <<'EOF'
+          .artifact-check-allow
+          LICENSE
+          README.md
+          bin/gephyra-wrapper
+          dist/extension.js
+          media/icon.png
+          package.json
+          scripts/artifact-check.sh
+          EOF
+          diff /tmp/expected /tmp/shipped || {
+            echo "::error::extension package contents differ from the expected manifest"; exit 1; }

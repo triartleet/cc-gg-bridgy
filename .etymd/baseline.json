@@ -1,18 +1,18 @@
 {
-  "packVersion": "2",
-  "etymdVersion": "0.0.1",
-  "approvedAt": "2026-07-28T05:17:15.884Z",
+  "packVersion": "3",
+  "etymdVersion": "0.3.1",
+  "approvedAt": "2026-08-07T11:58:05.686Z",
   "profile": "solo",
   "facts": {
-    "etymdVersion": "0.0.1",
-    "packVersion": "2",
-    "generatedAt": "2026-07-28T05:17:15.882Z",
+    "etymdVersion": "0.3.1",
+    "packVersion": "3",
+    "generatedAt": "2026-08-07T11:58:05.684Z",
     "root": ".",
     "name": "gephyra",
     "git": {
       "isRepo": true,
-      "branch": "provider-profiles",
-      "head": "9c951ca",
+      "branch": "main",
+      "head": "a9181f2",
       "hooksPath": ".githooks",
       "husky": false,
       "recentAuthors": 1
@@ -28,7 +28,9 @@
       "raw": {
         "build": "node esbuild.mjs",
         "watch": "node esbuild.mjs --watch",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "build:production": "node esbuild.mjs --production",
+        "vscode:prepublish": "npm run build:production && ./scripts/artifact-check.sh"
       },
       "typecheck": "typecheck",
       "build": "build"
@@ -42,9 +44,11 @@
       "dir": ".githooks",
       "preCommit": true,
       "prePush": true,
-      "commitMsg": false,
+      "commitMsg": true,
       "lintStaged": false
     },
+    "publishable": true,
+    "publishRoute": "vscode",
     "artifacts": [
       {
         "id": "agents",
@@ -58,6 +62,27 @@
         "label": "PROJECT_CONTEXT.md (ground-truth state)",
         "path": "PROJECT_CONTEXT.md",
         "kind": "state",
+        "exists": false
+      },
+      {
+        "id": "decisions",
+        "label": "DECISIONS.md (decision record)",
+        "path": "DECISIONS.md",
+        "kind": "decisions",
+        "exists": true
+      },
+      {
+        "id": "adr-dir",
+        "label": "ADR directory (docs/adr)",
+        "path": "docs/adr",
+        "kind": "decisions",
+        "exists": false
+      },
+      {
+        "id": "decisions-dir",
+        "label": "ADR directory (docs/decisions)",
+        "path": "docs/decisions",
+        "kind": "decisions",
         "exists": false
       },
       {
@@ -150,29 +175,56 @@
         "path": "docs/INVENTORY.md",
         "kind": "map",
         "exists": false
+      },
+      {
+        "id": "adr-files",
+        "label": "ADR files (docs/NNNN-*.md)",
+        "path": "docs",
+        "kind": "decisions",
+        "exists": false
       }
     ],
+    "freshness": {
+      "repoLastCommit": "2026-08-07T11:08:32+02:00",
+      "artifacts": [
+        {
+          "artifactId": "decisions",
+          "path": "DECISIONS.md",
+          "lastCommit": "2026-08-06T06:48:12+02:00",
+          "commitsSince": true
+        }
+      ],
+      "unverifiable": []
+    },
     "tree": {
       "dirs": [
         {
           "name": "src",
-          "files": 6
-        },
-        {
-          "name": ".githooks",
-          "files": 2
-        },
-        {
-          "name": ".vscode",
-          "files": 2
+          "files": 7
         },
         {
           "name": "media",
-          "files": 2
+          "files": 4
+        },
+        {
+          "name": ".githooks",
+          "files": 3
+        },
+        {
+          "name": ".vscode",
+          "files": 3
         },
         {
           "name": "bin",
           "files": 1
+        },
+        {
+          "name": "scripts",
+          "files": 1
+        },
+        {
+          "name": ".claude",
+          "files": 0
         }
       ],
       "truncated": false
